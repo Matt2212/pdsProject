@@ -31,6 +31,7 @@ void swap_get(vaddr_t address, unsigned int index) {
     spinlock_acquire(&bitmap_lock);
     bitmap_unmark(swap->bitmap, index);
     spinlock_release(&bitmap_lock);
+    if (address == NULL) return;
     uio_kinit(&iov, &ku, address, PAGE_SIZE, index*PAGE_SIZE, UIO_READ);
     VOP_READ(swap->file, &ku);
 }

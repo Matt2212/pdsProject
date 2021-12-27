@@ -1,10 +1,12 @@
 #include <swapfile.h>
+#include <types.h>
 #include <kern/fcntl.h>
 #include <vfs.h>
 #include <lib.h>
 #include <vnode.h>
 #include <errno.h>
 #include <uio.h>
+#include <mips/include/types.h>
 
 static struct spinlock bitmap_lock = SPINLOCK_INITIALIZER;
 

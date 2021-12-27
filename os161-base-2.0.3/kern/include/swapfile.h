@@ -2,7 +2,6 @@
 #define _SWAP_FILE_H_
 
 #include <bitmap.h>
-#include <types.h>
 #include <vm.h>
 
 #define SWAP_MAX 9 * 1024 * 1024 / PAGE_SIZE

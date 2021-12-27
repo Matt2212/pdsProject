@@ -1,7 +1,7 @@
 #ifndef PT_H
 #define PT_H
 
-#include <vm.h>
+#include <mips/include/types.h>
 
 #define TABLE_SIZE 1024
 

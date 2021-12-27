@@ -2,6 +2,7 @@
 #include <coremap.h>
 #include <swapfile.h>
 
+
 #define PAGE_NOT_FOUND 1
 
 vaddr_t get_victim(pt* table ) {
@@ -56,7 +57,7 @@ void init_rows(pt* table, unsigned int index) {
 }
 
 // ritorna 0 in caso di errori
-unsigned int pt_get_frame_from_page(pt* table, vaddr_t addr) {
+paddr_t pt_get_frame_from_page(pt* table, vaddr_t addr, uint8_t* read_only) {
     unsigned int exte, inte;
     exte = GET_EXT_INDEX(addr);
     inte = GET_INT_INDEX(addr);
@@ -65,8 +66,10 @@ unsigned int pt_get_frame_from_page(pt* table, vaddr_t addr) {
         // TODO chied se meglio prendere le pagine libere per questo swapout
         pt_load_frame_from_swap(table, addr);
     }
-
-    return table->table[exte][inte].frame_no;
+    if (read_only != NULL) {
+        *read_only = table->table[exte][inte].read_only;
+    }
+    return table->table[exte][inte].frame_no << 12;
 }
 
 void pt_load_frame_from_swap(pt* table, vaddr_t requested) {
@@ -75,7 +78,7 @@ void pt_load_frame_from_swap(pt* table, vaddr_t requested) {
     inte = GET_INT_INDEX(requested);
     vaddr_t victim = get_victim(table);
     if (victim == PAGE_NOT_FOUND)
-        panic("no space ")
+        panic("no space ");
     vic_int = GET_INT_INDEX(victim);  
     vic_ext = GET_EXT_INDEX(victim);
     paddr_t frame_victim = table->table[vic_ext][vic_int].frame_no * PAGE_SIZE; //indirizzo fisco del frame vittima

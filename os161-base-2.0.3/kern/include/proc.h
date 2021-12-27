@@ -39,6 +39,7 @@
 #include <spinlock.h>
 
 #include <pt.h> // added
+#include <opt-project.h>
 
 struct addrspace;
 struct thread;
@@ -74,7 +75,10 @@ struct proc {
 
 	/* add more material here as needed */
 
+#if OPT_PROJECT
 	pt* p_table;
+#endif
+
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */

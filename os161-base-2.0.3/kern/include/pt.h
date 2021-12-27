@@ -1,14 +1,17 @@
 #ifndef PT_H
 #define PT_H
 
-#include <mips/include/types.h>
+#include <mips/types.h>
 
 #define TABLE_SIZE 1024
 
-#define GET_EXT_INDEX(addr) ( addr >> 22)
+#define GET_EXT_INDEX(addr) ( addr >> 22 )
 #define GET_INT_INDEX(addr) (( addr & 0x3f000) >> 12)
 
 #define MACRO_PAGE_SIZE 1 << 22
+
+#define PAGE_NOT_FOUND 1
+
 typedef struct
 {
     unsigned int frame_no:20;
@@ -22,8 +25,9 @@ typedef struct
     entry* table[TABLE_SIZE];
 } pt;
 
+// fai i metodi thread safe
 
-static vaddr_t get_victim(pt* table); //indirizzo logico nello user space di una pagina indicata come vittima
+vaddr_t get_victim(pt* table); //indirizzo logico nello user space di una pagina indicata come vittima
 
 void init_rows(pt* table, unsigned int index); //creazione e inizializzazione di un blocco di 1024 entries
 

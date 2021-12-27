@@ -3,7 +3,6 @@
 #include <swapfile.h>
 
 
-#define PAGE_NOT_FOUND 1
 
 vaddr_t get_victim(pt* table ) {
     static vaddr_t victim = 0;
@@ -30,6 +29,7 @@ vaddr_t get_victim(pt* table ) {
 
 void pt_destroy(pt* table){
     int i = 0;
+    if (table == NULL) return; 
     for(;i < TABLE_SIZE; i++) {
         if (table->table[i] != NULL) {
             int j = 0;

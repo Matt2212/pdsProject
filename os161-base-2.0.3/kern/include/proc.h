@@ -36,9 +36,10 @@
  * Note: curproc is defined by <current.h>.
  */
 
-#include <opt-project.h>
 #include <pt.h>  // added
 #include <spinlock.h>
+
+#include "opt-project.h"
 
 struct addrspace;
 struct thread;

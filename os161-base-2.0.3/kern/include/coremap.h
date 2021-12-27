@@ -30,6 +30,7 @@ static free_list* frames = NULL;
 void coremap_init(int n_pages);
 
 paddr_t get_frame();
+
 void free_frame(paddr_t addr);
 
 #endif

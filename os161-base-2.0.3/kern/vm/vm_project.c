@@ -31,7 +31,7 @@
 #include <machine/vm.h>
 #include <addrspace.h>
 
-
+#include <coremap.h>
 #include <cpu.h>
 #include <current.h>
 #include <kern/errno.h>
@@ -67,7 +67,7 @@
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 
 void vm_bootstrap(void) {
-    /* Do nothing. */
+    coremap_init();
 }
 
 /*
@@ -91,12 +91,9 @@ dumbvm_can_sleep(void) {
 static paddr_t
 getppages(unsigned long npages) {
     paddr_t addr;
-
-    spinlock_acquire(&stealmem_lock);
-
-    addr = ram_stealmem(npages);
-
-    spinlock_release(&stealmem_lock);
+    int count = 0;
+    //swappa se sono finite le pagine
+    
     return addr;
 }
 

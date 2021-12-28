@@ -4,13 +4,18 @@
 
 static struct spinlock free_list_lock = SPINLOCK_INITIALIZER;
 static struct free_list* frames = NULL;
-
+//rifare coremap con una bitmap
 void coremap_init(void) {
-    struct free_list* last_addr = PADDR_TO_KVADDR(((struct free_list*)ram_getsize()));
-    struct free_list* addr = PADDR_TO_KVADDR(((struct free_list*)ram_getfirstfree()));
+    vaddr_t last_addr = PADDR_TO_KVADDR(ram_getsize());
+    volatile paddr_t firstfree = ram_getfirstfree();
+    // allineo
+    if ((firstfree & PAGE_FRAME) != firstfree)
+        firstfree = (firstfree & PAGE_FRAME) + PAGE_SIZE;
+    vaddr_t addr = PADDR_TO_KVADDR(firstfree);
+
     for (; addr < last_addr; addr += PAGE_SIZE) {
-        addr->next = frames;
-        frames = addr;
+        ((struct free_list*)addr)->next = frames;
+        frames = (struct free_list*)addr;
     }
 }
 

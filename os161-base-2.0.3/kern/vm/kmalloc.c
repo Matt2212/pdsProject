@@ -122,7 +122,7 @@ fill_deadbeef(void *vptr, size_t len)
 #undef CHECKGUARDS
 
 ////////////////////////////////////////
-
+#define PAGE_SIZE 4096
 #if PAGE_SIZE == 4096
 
 #define NSIZES 8

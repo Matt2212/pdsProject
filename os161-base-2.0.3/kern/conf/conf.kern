@@ -441,3 +441,11 @@ file		test/semunit.c
 file		test/kmalloctest.c
 file		test/fstest.c
 optfile net	test/nettest.c
+
+# project options
+
+defoption project
+optfile   project vm/pt.c
+#optfile   project vm/swapfile.c
+#optfile   project vm/vm_tlb.c
+optfile   project vm/coremap.c

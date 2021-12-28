@@ -447,5 +447,5 @@ optfile net	test/nettest.c
 defoption project
 optfile   project vm/pt.c
 #optfile   project vm/swapfile.c
-#optfile   project vm/vm_tlb.c
+optfile   project vm/vm_tlb.c
 optfile   project vm/coremap.c

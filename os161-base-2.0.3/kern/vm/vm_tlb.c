@@ -1,5 +1,4 @@
-
-#include <mips/tlb.h>
+#include <vm_tlb.h>
 
 int tlb_get_rr_victim(void) {
     int victim;

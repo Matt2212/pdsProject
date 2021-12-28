@@ -32,13 +32,13 @@
 #include <current.h>
 #include <kern/errno.h>
 #include <lib.h>
+#include <machine/vm.h>
 #include <mips/tlb.h>
 #include <proc.h>
 #include <spinlock.h>
 #include <spl.h>
 #include <types.h>
 #include <vm.h>
-
 /*
  * Dumb MIPS-only "VM system" that is intended to only be just barely
  * enough to struggle off the ground. You should replace all of this

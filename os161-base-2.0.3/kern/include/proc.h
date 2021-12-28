@@ -36,8 +36,6 @@
  * Note: curproc is defined by <current.h>.
  */
 
-#include <opt-project.h>
-#include <pt.h>  // added
 #include <spinlock.h>
 
 struct addrspace;
@@ -62,21 +60,17 @@ struct vnode;
  * without sleeping.
  */
 struct proc {
-    char *p_name;           /* Name of this process */
-    struct spinlock p_lock; /* Lock for this structure */
-    unsigned p_numthreads;  /* Number of threads in this process */
+	char *p_name;			/* Name of this process */
+	struct spinlock p_lock;		/* Lock for this structure */
+	unsigned p_numthreads;		/* Number of threads in this process */
 
-    /* VM */
-    struct addrspace *p_addrspace; /* virtual address space */
+	/* VM */
+	struct addrspace *p_addrspace;	/* virtual address space */
 
-    /* VFS */
-    struct vnode *p_cwd; /* current working directory */
+	/* VFS */
+	struct vnode *p_cwd;		/* current working directory */
 
-    /* add more material here as needed */
-
-#if OPT_PROJECT
-    pt *p_table;
-#endif
+	/* add more material here as needed */
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
@@ -102,5 +96,6 @@ struct addrspace *proc_getas(void);
 
 /* Change the address space of the current process, and return the old one. */
 struct addrspace *proc_setas(struct addrspace *);
+
 
 #endif /* _PROC_H_ */

@@ -26,18 +26,20 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
+#include <types.h>
+#include <mips/tlb.h>
+#include <machine/vm.h>
 #include <addrspace.h>
+
+
 #include <cpu.h>
 #include <current.h>
 #include <kern/errno.h>
 #include <lib.h>
-#include <machine/vm.h>
-#include <mips/tlb.h>
 #include <proc.h>
 #include <spinlock.h>
 #include <spl.h>
-#include <types.h>
+#include <vm_tlb.h>
 #include <vm.h>
 /*
  * Dumb MIPS-only "VM system" that is intended to only be just barely
@@ -123,7 +125,7 @@ void vm_tlbshootdown(const struct tlbshootdown *ts) {
 }
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
-    vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
+    //vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
     paddr_t paddr;
     int i;
     uint32_t ehi, elo;

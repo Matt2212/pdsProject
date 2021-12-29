@@ -1,8 +1,9 @@
-//#include <kern/fcntl.h>
-//#include <lib.h>
+
+#include <types.h>
 #include <machine/vm.h>
 #include <swapfile.h>
-#include <types.h>
+#include <kern/fcntl.h>
+#include <lib.h>
 #include <uio.h>
 #include <vfs.h>
 #include <vnode.h>
@@ -12,7 +13,6 @@ static swap_file* swap;
 
 void swap_init() {
     swap = kmalloc(sizeof(swap_file));
-    #if 0
     if (swap == NULL) {
         panic("OUT OF MEMORY");
         return;
@@ -21,32 +21,25 @@ void swap_init() {
     if (swap->bitmap == NULL) {
         panic("OUT OF MEMORY");
         kfree(swap);
-        return NULL;
+        return;
     }
-    vfs_open("SWAP_FILE", O_CREAT | O_RDWR, 0,&swap->file);
-    #endif
+    vfs_open((char*)"SWAP_FILE", O_CREAT | O_RDWR, 0,&swap->file);
 }
 
 // FORSE NON VA BENE VADDR_T CONTROLLA SE NEL BUFFER DEVI METTEER UN INDIRIZZO FISICO O LOGICO DEL KERNEL (PROBABILMENTE LA SECONDA)
 
 void swap_get(vaddr_t address, unsigned int index) {
-    #if 0
     struct iovec iov;
 	struct uio ku;
     spinlock_acquire(&bitmap_lock);
     bitmap_unmark(swap->bitmap, index);
     spinlock_release(&bitmap_lock);
-    if (address == NULL) return;
+    if ((void *)address == NULL) return;
     uio_kinit(&iov, &ku, address, PAGE_SIZE, index*PAGE_SIZE, UIO_READ);
     VOP_READ(swap->file, &ku);
-    #else
-    (void)address;
-    (void)index;
-#endif
 }
 
 int swap_set(vaddr_t address) {
-#if 0
     struct iovec iov;
 	struct uio ku;
     int index;
@@ -57,16 +50,11 @@ int swap_set(vaddr_t address) {
     uio_kinit(&iov, &ku, address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);
     VOP_WRITE(swap->file, &ku);
     return index;
-#else
-    (void)address;
-#endif
 }
 
 void swap_close() {
     bitmap_destroy(swap->bitmap);
-    #if 0
     vfs_close(swap->file);
-    #endif
     kfree(swap);
     swap = NULL;
 }

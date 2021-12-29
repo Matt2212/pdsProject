@@ -1,6 +1,6 @@
 #include <coremap.h>
-#include <lib.h>
 #include <pt.h>
+#include <lib.h>
 #include <machine/vm.h>
 //#include <swapfile.h>
 
@@ -47,7 +47,7 @@ void pt_destroy(pt* table){
 
 void init_rows(pt* table, unsigned int index) {
     int i = 0;
-    table->table[index] = kmalloc(sizeof(entry)*TABLE_SIZE);
+    table->table[index] = kmalloc(sizeof(pt_entry)*TABLE_SIZE);
     if (table->table[index] == NULL) {
         panic("No space left on the device");
     }

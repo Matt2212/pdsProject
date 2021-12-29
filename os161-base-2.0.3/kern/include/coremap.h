@@ -2,6 +2,7 @@
 #define _COREMAP_H_
 
 #include <types.h>
+
 /**
  * 
  * Lista dei frame liberi, ogni elemento punta al successivo, per ottenere il numero di frame bisogna 
@@ -9,14 +10,9 @@
  * 
  */
 
-struct cm_entry {
-    uint8_t occ : 1;
-    uint8_t fixed : 1;
-    uint8_t nframes : 6; //quanti frame contigui a questo sono stati allocati (max 63)
-    //entry *pt_entry;
-};
+struct cm_entry;
 
-#define MAX_CONT_PAGES 64
+#define MAX_CONT_PAGES (unsigned int)64
 
 /**
  *
@@ -29,9 +25,11 @@ struct cm_entry {
  *
  */
 
-int coremap_bootstrap(paddr_t lastpaddr, paddr_t firstpaddr);
+void coremap_create(unsigned int npages);
 
-paddr_t get_n_frames(int num);
+int coremap_bootstrap(paddr_t firstpaddr);
+
+paddr_t get_n_frames(unsigned int num);
 
 void free_frame(paddr_t addr);
 

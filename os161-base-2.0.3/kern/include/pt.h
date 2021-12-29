@@ -20,11 +20,11 @@ typedef struct
     unsigned int valid:1;
     unsigned int swp:1;
     unsigned int read_only:1;
-} entry;
+} pt_entry;
 
 typedef struct
 {
-    entry* table[TABLE_SIZE];
+    pt_entry* table[TABLE_SIZE];
 } pt;
 
 // fai i metodi thread safe

@@ -65,10 +65,25 @@
  * Wrap ram_stealmem in a spinlock.
  */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
-static bool init;
+static bool init = 0;
+
+
 void vm_bootstrap(void) {
-    coremap_bootstrap(ram_getfirstfree(), ram_getsize());
+    //non so se serva
+    spinlock_acquire(&stealmem_lock);
+    unsigned int npages = ram_getsize() / PAGE_SIZE;
+    coremap_create(npages);
+    if (!coremap_bootstrap(ram_getfirstfree())) panic("Not enough memory to allocate the coremap");
     init = true;
+    spinlock_release(&stealmem_lock);
+    paddr_t a = get_n_frames(6);
+    paddr_t b = get_n_frames(8);
+    paddr_t c = get_n_frames(2);
+    free_kpages(a);
+    a = get_n_frames(2);
+    free_kpages(c);
+    free_kpages(b);
+    free_kpages(a);
 }
 
 /*
@@ -91,11 +106,12 @@ dumbvm_can_sleep(void) {
 
 static paddr_t
 getppages(unsigned long npages) {
-    if(init)
-        return get_n_frames(npages);
-
     paddr_t addr;
     spinlock_acquire(&stealmem_lock);
+    if(init){
+        spinlock_release(&stealmem_lock);
+        return get_n_frames(npages);
+    }
     addr = ram_stealmem(npages);
     spinlock_release(&stealmem_lock);
     return addr;
@@ -107,7 +123,7 @@ alloc_kpages(unsigned npages) {
     paddr_t pa;
 
     dumbvm_can_sleep();
-    pa = get_n_frames(npages);
+    pa = getppages(npages);
     if (pa == 0) {
         return 0;
     }
@@ -115,7 +131,14 @@ alloc_kpages(unsigned npages) {
 }
 
 void free_kpages(vaddr_t addr) {
-    free_frame(addr);
+    if (addr == 0) return NULL;
+    spinlock_acquire(&stealmem_lock);
+    if (init) {
+        spinlock_release(&stealmem_lock);
+        free_frame(addr);
+        return;
+    }
+    spinlock_release(&stealmem_lock);
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {

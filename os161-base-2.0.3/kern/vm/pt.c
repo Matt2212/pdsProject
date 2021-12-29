@@ -96,7 +96,7 @@ bool pt_load_free_frame(pt* table, vaddr_t userptr) {
     unsigned int exte, inte;
     exte = GET_EXT_INDEX(userptr);
     inte = GET_INT_INDEX(userptr);
-    if (!(table->table[exte][inte].frame_no = get_frame()))
+    if (!(table->table[exte][inte].frame_no = get_n_frames(1)))
         return false;
     table->table[exte][inte].valid = true;
     return true;

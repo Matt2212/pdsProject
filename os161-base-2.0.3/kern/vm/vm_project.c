@@ -65,9 +65,10 @@
  * Wrap ram_stealmem in a spinlock.
  */
 static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
-
+static bool init;
 void vm_bootstrap(void) {
-    coremap_init();
+    coremap_bootstrap(ram_getfirstfree(), ram_getsize());
+    init = true;
 }
 
 /*
@@ -90,10 +91,13 @@ dumbvm_can_sleep(void) {
 
 static paddr_t
 getppages(unsigned long npages) {
+    if(init)
+        return get_n_frames(npages);
+
     paddr_t addr;
-    int count = 0;
-    //swappa se sono finite le pagine
-    
+    spinlock_acquire(&stealmem_lock);
+    addr = ram_stealmem(npages);
+    spinlock_release(&stealmem_lock);
     return addr;
 }
 
@@ -103,7 +107,7 @@ alloc_kpages(unsigned npages) {
     paddr_t pa;
 
     dumbvm_can_sleep();
-    pa = getppages(npages);
+    pa = get_n_frames(npages);
     if (pa == 0) {
         return 0;
     }
@@ -111,9 +115,7 @@ alloc_kpages(unsigned npages) {
 }
 
 void free_kpages(vaddr_t addr) {
-    /* nothing - leak the memory. */
-
-    (void)addr;
+    free_frame(addr);
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {

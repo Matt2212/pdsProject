@@ -1,48 +1,66 @@
+
+#include <types.h>
 #include <coremap.h>
-#include <vm.h>
+#include <lib.h>
 #include <spinlock.h>
+#include <vm.h>
 
 static struct spinlock free_list_lock = SPINLOCK_INITIALIZER;
-static struct free_list* frames = NULL;
-//rifare coremap con una bitmap
-void coremap_init(void) {
-    vaddr_t last_addr = PADDR_TO_KVADDR(ram_getsize());
-    volatile paddr_t firstfree = ram_getfirstfree();
-    // allineo
-    if ((firstfree & PAGE_FRAME) != firstfree)
-        firstfree = (firstfree & PAGE_FRAME) + PAGE_SIZE;
-    vaddr_t addr = PADDR_TO_KVADDR(firstfree);
 
-    for (; addr < last_addr; addr += PAGE_SIZE) {
-        ((struct free_list*)addr)->next = frames;
-        frames = (struct free_list*)addr;
+static struct cm_entry* coremap = NULL;
+static int npages = 0;
+static int first_page = 0;
+// rifare coremap con una bitmap
+int coremap_bootstrap(paddr_t lastpaddr, paddr_t firstpaddr) {
+    int kernpages, i, no_fit = 1;
+    npages = lastpaddr / PAGE_SIZE;
+    coremap = kmalloc(npages*sizeof(struct cm_entry));
+    if (!coremap) return false;
+    if (!(firstpaddr % PAGE_SIZE))
+        no_fit = 0;
+    kernpages = (firstpaddr & PAGE_FRAME) / PAGE_SIZE + no_fit; // forse è la prima pagina non kernel attento all'allineamento. se l'indirizzo non risulta allineato la pagina appartiene al kernel altrimenti no
+    KASSERT(npages > kernpages);
+    for (i = 0; i <= kernpages; i++) {
+        coremap[i].occ = true;
+        coremap[i].fixed = true;
     }
+    first_page = kernpages + 1;
+    return true;
 }
 
-paddr_t get_frame(void) {
-    vaddr_t ret;
+paddr_t get_n_frames(int num) { //per il momento sono tutti fixed
+    int i,j, count = 0;
+    if (num > MAX_CONT_PAGES || num == 0) return 0;
     spinlock_acquire(&free_list_lock);
-    if (frames == NULL) {
-        spinlock_release(&free_list_lock);
-        return ((paddr_t) NULL);
-    }
-    else {
-        ret = (paddr_t)frames;
-        frames = frames->next;
+    for (i = first_page; i < npages; i++) {
+        if (!coremap[i].occ)
+            count++;
+        else
+            count = 0;
+        if (count == num) {
+            for (j = i; j > i - num; j--) {
+                coremap[j].occ = true;
+                coremap[j].fixed = true;
+            }
+            coremap[j].nframes = num;
+            spinlock_release(&free_list_lock);
+            return j * PAGE_SIZE;
+        }
     }
     spinlock_release(&free_list_lock);
-    //controlla che effettivamente tutta la pagina sia azzerata
-    //memset((void*) ret, '\0', PAGE_SIZE);
-    return ret - MIPS_KSEG0;
+    return 0;
 }
 
 void free_frame(paddr_t addr) {
-    struct free_list* target = ((struct free_list*)PADDR_TO_KVADDR(addr));
-
+    int index, i;
+    KASSERT((addr & PAGE_FRAME) == addr);
+    index = addr / PAGE_SIZE;
     spinlock_acquire(&free_list_lock);
-
-    target->next = frames;
-    frames->next = target;
-
+    KASSERT(coremap[index].occ);
+    for (i = 0; i < coremap[index].nframes; i++) {
+        coremap[index].occ = false;
+        coremap[index].fixed = false;
+    }
+    coremap[index].nframes = 0;
     spinlock_release(&free_list_lock);
 }

@@ -76,7 +76,7 @@ struct proc {
 
 	/* add more material here as needed */
 #if OPT_PROJECT
-    pt *p_table;
+    pt *p_table; //mettilo nell'address space
 #endif
 };
 

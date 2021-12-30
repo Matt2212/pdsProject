@@ -30,12 +30,19 @@ int coremap_bootstrap(paddr_t firstpaddr) {
 
     KASSERT(npages > first_page);
 
-    for (i = 0; i < npages; i++) {
-        coremap[i].fixed = 0;
+    for (i = 0; i < first_page; i++) {
+        coremap[i].occ = true;
+        coremap[i].fixed = true;
+        coremap[i].nframes = 0;
+        coremap[i].pt_entry = NULL;
+    }
+    for (; i < npages; i++) {
+        coremap[i].occ = 0;
         coremap[i].fixed = false;
         coremap[i].nframes = 0;
         coremap[i].pt_entry = NULL;
     }
+
     coremap[0].nframes = first_page;
     coremap[first_page].nframes = npages - first_page;
     return true;

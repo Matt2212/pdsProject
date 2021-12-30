@@ -41,6 +41,8 @@
 #include <spl.h>
 #include <vm_tlb.h>
 #include <vm.h>
+
+#include <swapfile.h>
 /*
  * Dumb MIPS-only "VM system" that is intended to only be just barely
  * enough to struggle off the ground. You should replace all of this
@@ -64,20 +66,21 @@
 /*
  * Wrap ram_stealmem in a spinlock.
  */
-static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
+static struct spinlock vm_lock = SPINLOCK_INITIALIZER;
 static bool init = 0;
 
 
 void vm_bootstrap(void) {
     //non so se serva
-    spinlock_acquire(&stealmem_lock);
+    spinlock_acquire(&vm_lock);
     unsigned int npages = ram_getsize() / PAGE_SIZE;
-    spinlock_release(&stealmem_lock);
+    spinlock_release(&vm_lock);
     coremap_create(npages);
-    spinlock_acquire(&stealmem_lock);
+    spinlock_acquire(&vm_lock);
     coremap_bootstrap(ram_getfirstfree());
     init = true;
-    spinlock_release(&stealmem_lock);
+    spinlock_release(&vm_lock);
+    swap_init();
 }
 
 /*
@@ -101,12 +104,12 @@ dumbvm_can_sleep(void) {
 static paddr_t
 getppages(unsigned long npages) {
     paddr_t addr;
-    spinlock_acquire(&stealmem_lock);
+    spinlock_acquire(&vm_lock);
     if (!init)  // dovremmo essere al bootstrap quindi possiamo allocare in maniera contigua
         addr = ram_stealmem(npages);
     else
         addr = get_n_frames(npages);  // get_n_frames(npages);
-    spinlock_release(&stealmem_lock);
+    spinlock_release(&vm_lock);
     return addr;
 }
 
@@ -125,11 +128,11 @@ alloc_kpages(unsigned npages) {
 
 void free_kpages(vaddr_t addr) {
     if (addr == 0) return;
-    spinlock_acquire(&stealmem_lock);
+    spinlock_acquire(&vm_lock);
     if (init) {
         free_frame((paddr_t)addr - MIPS_KSEG0);
     }
-    spinlock_release(&stealmem_lock);
+    spinlock_release(&vm_lock);
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {

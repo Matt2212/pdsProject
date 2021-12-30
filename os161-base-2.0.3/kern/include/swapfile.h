@@ -25,9 +25,9 @@ typedef struct {
  */
 
 
-void swap_init();
+void swap_init(void);
 void swap_get(vaddr_t address, unsigned int index);
 int swap_set(vaddr_t address);
-void swap_close();
+void swap_close(void);
 
 #endif

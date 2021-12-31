@@ -59,7 +59,7 @@ int coremap_bootstrap(paddr_t firstpaddr) {
     return true;
 }
 
-paddr_t get_n_frames(unsigned int num, bool fixed) {  // per il momento sono tutti fixed
+static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {  // per il momento sono tutti fixed
     #if 0
     unsigned int i, j, count = 0;
     if (num > MAX_CONT_PAGES || num == 0) return 0;
@@ -117,6 +117,7 @@ paddr_t get_n_frames(unsigned int num, bool fixed) {  // per il momento sono tut
     for (i = page; i < page + num; i++){
         coremap[i].occ = true;
         coremap[i].fixed = fixed;
+        coremap[i].pt_entry = entry;
     }
     addr = (paddr_t)(page * PAGE_SIZE);
     spinlock_release(&coremap_lock);
@@ -124,8 +125,12 @@ paddr_t get_n_frames(unsigned int num, bool fixed) {  // per il momento sono tut
 #endif
 }
 
-paddr_t get_swappable_frame() {
-    return get_n_frames(1, false);
+paddr_t get_swappable_frame(void* entry) {
+    return get_n_frames(1, false, entry);
+}
+
+paddr_t get_kernel_frame(unsigned int num) {
+    return get_n_frames(num, true, NULL);
 }
 
 void free_frame(paddr_t addr) {
@@ -144,6 +149,7 @@ void free_frame(paddr_t addr) {
     return;
 #else
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
+    bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
     spinlock_acquire(&coremap_lock);
     mysize = coremap[page].nframes;
 

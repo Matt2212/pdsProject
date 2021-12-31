@@ -113,7 +113,7 @@ getppages(unsigned long npages) {
     }
     else {
         spinlock_release(&vm_lock);
-        addr = get_n_frames(npages, true);
+        addr = get_kernel_frame(npages);
     }
     return addr;
 }

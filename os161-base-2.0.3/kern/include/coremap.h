@@ -25,13 +25,14 @@ struct cm_entry;
  *
  */
 
+
 void coremap_create(unsigned int npages);
 
 int coremap_bootstrap(paddr_t firstpaddr);
 
-paddr_t get_n_frames(unsigned int num, bool fixed);
+paddr_t get_swappable_frame(void* entry);
 
-paddr_t get_swappable_frame(void);
+paddr_t get_kernel_frame(unsigned int num);
 
 void free_frame(paddr_t addr);
 

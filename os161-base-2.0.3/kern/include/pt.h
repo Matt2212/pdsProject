@@ -6,7 +6,7 @@
 #define TABLE_SIZE 1024
 
 #define GET_EXT_INDEX(addr) ( addr >> 22 )
-#define GET_INT_INDEX(addr) (( addr & 0x3f000) >> 12)
+#define GET_INT_INDEX(addr) (( addr & 0x3ff000) >> 12)
 
 #define MACRO_PAGE_SIZE 1 << 22
 

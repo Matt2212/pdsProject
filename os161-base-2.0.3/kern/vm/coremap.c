@@ -19,6 +19,17 @@ static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
 
+static unsigned int get_victim() {
+    static unsigned int prev_victim = 0;
+    int victim = prev_victim;
+
+    while (!(coremap[victim].occ && !coremap[victim].fixed))
+        victim = (prev_victim + coremap[victim].nframes) % (npages);
+
+    prev_victim = victim;
+    return victim;
+}
+
 void coremap_create(unsigned int n_pages) {
     npages = n_pages;
     coremap = kmalloc(npages * sizeof(struct cm_entry));
@@ -48,7 +59,7 @@ int coremap_bootstrap(paddr_t firstpaddr) {
     return true;
 }
 
-paddr_t get_n_frames(unsigned int num) {  // per il momento sono tutti fixed
+paddr_t get_n_frames(unsigned int num, bool fixed) {  // per il momento sono tutti fixed
     #if 0
     unsigned int i, j, count = 0;
     if (num > MAX_CONT_PAGES || num == 0) return 0;
@@ -85,6 +96,7 @@ paddr_t get_n_frames(unsigned int num) {  // per il momento sono tutti fixed
     }
 
     if (!found){
+        //swappa
         return 0;
     }
 
@@ -100,7 +112,7 @@ paddr_t get_n_frames(unsigned int num) {  // per il momento sono tutti fixed
 
     for (i = page; i < page + num; i++){
         coremap[i].occ = true;
-        coremap[i].fixed = true;
+        coremap[i].fixed = fixed;
     }
     addr = (paddr_t)(page * PAGE_SIZE);
     return addr;

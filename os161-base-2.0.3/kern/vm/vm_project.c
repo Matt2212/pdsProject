@@ -77,7 +77,9 @@ void vm_bootstrap(void) {
     spinlock_release(&vm_lock);
     coremap_create(npages);
     spinlock_acquire(&vm_lock);
-    coremap_bootstrap(ram_getfirstfree());
+    if (!coremap_bootstrap(ram_getfirstfree())) {
+        panic("No space left on the device to allocate the coremap table");
+    }
     init = true;
     spinlock_release(&vm_lock);
     swap_init();
@@ -105,11 +107,14 @@ static paddr_t
 getppages(unsigned long npages) {
     paddr_t addr;
     spinlock_acquire(&vm_lock);
-    if (!init)  // dovremmo essere al bootstrap quindi possiamo allocare in maniera contigua
+    if (!init) { // dovremmo essere al bootstrap quindi possiamo allocare in maniera contigua
         addr = ram_stealmem(npages);
-    else
-        addr = get_n_frames(npages);  // get_n_frames(npages);
-    spinlock_release(&vm_lock);
+        spinlock_release(&vm_lock);
+    }
+    else {
+        spinlock_release(&vm_lock);
+        addr = get_n_frames(npages, true);
+    }
     return addr;
 }
 
@@ -129,10 +134,12 @@ alloc_kpages(unsigned npages) {
 void free_kpages(vaddr_t addr) {
     if (addr == 0) return;
     spinlock_acquire(&vm_lock);
-    if (init) {
-        free_frame((paddr_t)addr - MIPS_KSEG0);
+    if (!init) {
+        spinlock_release(&vm_lock);
+        return;
     }
     spinlock_release(&vm_lock);
+    free_frame((paddr_t)addr - MIPS_KSEG0);
 }
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {
@@ -186,7 +193,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
             return EINVAL;
     }
 
-    paddr = pt_get_frame_from_page(curproc->p_table, faultaddress, &read_only);
+    paddr = pt_get_frame_from_page(proc_getas()->page_table, faultaddress, &read_only);
 
     /* make sure it's page-aligned */
     KASSERT((paddr & PAGE_FRAME) == paddr);
@@ -233,12 +240,17 @@ as_create(void) {
     as->as_pbase2 = 0;
     as->as_npages2 = 0;
     as->as_stackpbase = 0;
-
+#if OPT_PROJECT
+    as->page_table = kmalloc(sizeof(pt));
+#endif
     return as;
 }
 
 void as_destroy(struct addrspace *as) {
     dumbvm_can_sleep();
+#if OPT_PROJECT
+    pt_destroy(as->page_table);
+#endif
     kfree(as);
 }
 

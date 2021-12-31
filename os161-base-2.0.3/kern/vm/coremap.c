@@ -11,10 +11,10 @@ struct cm_entry {
     uint32_t occ : 1;
     uint32_t fixed : 1;
     uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
-    pt_entry *pt_entry;
+    pt_entry *pt_entry; // se null la pagina è in swap
 };
 
-
+static struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
 static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
@@ -23,9 +23,8 @@ static unsigned int get_victim() {
     static unsigned int prev_victim = 0;
     int victim = prev_victim;
 
-    while (!(coremap[victim].occ && !coremap[victim].fixed))
+    while (!(coremap[victim].occ && !coremap[victim].fixed && coremap[victim].pt_entry))
         victim = (prev_victim + coremap[victim].nframes) % (npages);
-
     prev_victim = victim;
     return victim;
 }
@@ -34,6 +33,7 @@ void coremap_create(unsigned int n_pages) {
     npages = n_pages;
     coremap = kmalloc(npages * sizeof(struct cm_entry));
 }
+
 int coremap_bootstrap(paddr_t firstpaddr) {
     unsigned int i = 0;
     if (!coremap) return false;
@@ -86,8 +86,7 @@ paddr_t get_n_frames(unsigned int num, bool fixed) {  // per il momento sono tut
     paddr_t addr = 0;
     uint32_t i = first_page, residual, page;
     bool found = false;
-    if (num == 0) return 0;
-
+    spinlock_acquire(&coremap_lock);
     while (i < npages && !found) {
         if (!coremap[i].occ && coremap[i].nframes >= num)
             found = true;
@@ -95,9 +94,14 @@ paddr_t get_n_frames(unsigned int num, bool fixed) {  // per il momento sono tut
             i += coremap[i].nframes;
     }
 
-    if (!found){
-        //swappa
+    if (!found && num != 1) { // vedi se swappare piu di una pagina
+        spinlock_release(&coremap_lock);
         return 0;
+    } else if (!found) {
+        get_victim();
+        spinlock_release(&coremap_lock);
+        // swappa
+        spinlock_acquire(&coremap_lock);
     }
 
     page = i;
@@ -115,9 +119,13 @@ paddr_t get_n_frames(unsigned int num, bool fixed) {  // per il momento sono tut
         coremap[i].fixed = fixed;
     }
     addr = (paddr_t)(page * PAGE_SIZE);
+    spinlock_release(&coremap_lock);
     return addr;
 #endif
+}
 
+paddr_t get_swappable_frame() {
+    return get_n_frames(1, false);
 }
 
 void free_frame(paddr_t addr) {
@@ -136,7 +144,7 @@ void free_frame(paddr_t addr) {
     return;
 #else
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
-
+    spinlock_acquire(&coremap_lock);
     mysize = coremap[page].nframes;
 
     for (i = 0; i < mysize; i++) {
@@ -160,6 +168,14 @@ void free_frame(paddr_t addr) {
         i = next;
         next += coremap[next].nframes;
     }
-
+    spinlock_release(&coremap_lock);
 #endif
+}
+// forse la kfree da problemi
+void coremap_destroy() {
+    npages = 0;
+    kfree(coremap);
+    coremap = NULL;
+    spinlock_cleanup(&coremap_lock);
+    first_page = 0;
 }

@@ -37,10 +37,8 @@
  */
 
 #include <spinlock.h>
-#include "opt-project.h"
-#if OPT_PROJECT
-#include <pt.h>
-#endif
+
+
 
 struct addrspace;
 struct thread;
@@ -75,9 +73,6 @@ struct proc {
 	struct vnode *p_cwd;		/* current working directory */
 
 	/* add more material here as needed */
-#if OPT_PROJECT
-    pt *p_table; //mettilo nell'address space
-#endif
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */

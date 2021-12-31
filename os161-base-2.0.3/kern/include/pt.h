@@ -24,12 +24,12 @@ typedef struct
 
 typedef struct
 {
-    pt_entry* table[TABLE_SIZE];
+    pt_entry *table[TABLE_SIZE];
 } pt;
 
 // fai i metodi thread safe
 
-vaddr_t get_victim(pt* table); //indirizzo logico nello user space di una pagina indicata come vittima
+//vaddr_t get_victim(pt* table); //indirizzo logico nello user space di una pagina indicata come vittima
 
 void init_rows(pt* table, unsigned int index); //creazione e inizializzazione di un blocco di 1024 entries
 

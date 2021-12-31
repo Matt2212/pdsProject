@@ -4,6 +4,9 @@
 #include <machine/vm.h>
 //#include <swapfile.h>
 
+//todo add sspinlock
+
+#if 0
 vaddr_t get_victim(pt* table ) {
     static vaddr_t victim = 0;
     vaddr_t ret = victim;
@@ -26,7 +29,7 @@ vaddr_t get_victim(pt* table ) {
     victim = ret;
     return victim;
 }
-
+#endif
 void pt_destroy(pt* table){
     int i = 0;
     if (table == NULL) return; 
@@ -96,7 +99,7 @@ bool pt_load_free_frame(pt* table, vaddr_t userptr) {
     unsigned int exte, inte;
     exte = GET_EXT_INDEX(userptr);
     inte = GET_INT_INDEX(userptr);
-    if (!(table->table[exte][inte].frame_no = get_n_frames(1)))
+    if (!(table->table[exte][inte].frame_no = get_swappable_frame()))
         return false;
     table->table[exte][inte].valid = true;
     return true;

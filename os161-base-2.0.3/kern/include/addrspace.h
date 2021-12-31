@@ -34,9 +34,14 @@
  * Address space structure and operations.
  */
 
+#include "opt-dumbvm.h"
+#include "opt-project.h"
 
 #include <vm.h>
-#include "opt-dumbvm.h"
+#if OPT_PROJECT
+#include <pt.h>
+#endif
+
 
 struct vnode;
 
@@ -58,7 +63,14 @@ struct addrspace {
         size_t as_npages2;
         paddr_t as_stackpbase;
 #else
-        /* Put stuff here for your VM system */
+        vaddr_t as_vbase1;
+        paddr_t as_pbase1;
+        size_t as_npages1;
+        vaddr_t as_vbase2;
+        paddr_t as_pbase2;
+        size_t as_npages2;
+        paddr_t as_stackpbase;
+        pt* page_table;
 #endif
 };
 

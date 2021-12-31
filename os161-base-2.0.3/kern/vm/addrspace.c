@@ -53,8 +53,7 @@ as_create(void)
 	/*
 	 * Initialize as needed.
 	 */
-
-	return as;
+    return as;
 }
 
 int
@@ -84,7 +83,7 @@ as_destroy(struct addrspace *as)
 	 * Clean up as needed.
 	 */
 
-	kfree(as);
+        kfree(as);
 }
 
 void

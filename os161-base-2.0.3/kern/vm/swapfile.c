@@ -13,6 +13,7 @@ static struct spinlock swap_lock = SPINLOCK_INITIALIZER;
 static swap_file* swap;
 static bool init = false;
 
+//ritorna 0 se non ci sono stati errori
 int swap_init() {
     char name[] = "emu0:/.SWAP_FILE";
     swap = kmalloc(sizeof(swap_file));
@@ -30,8 +31,10 @@ int swap_init() {
     init = true;
     spinlock_release(&swap_lock);
     vfs_open(name, O_CREAT | O_RDWR | O_TRUNC, 0664, &swap->file);
+    return 0;
 }
 
+// ritorna 0 se non ci sono stati errori
 int swap_get(vaddr_t address, unsigned int index) {
     struct iovec iov;
 	struct uio ku;
@@ -47,7 +50,8 @@ int swap_get(vaddr_t address, unsigned int index) {
     return VOP_READ(swap->file, &ku);
 }
 
-int swap_set(vaddr_t address, unsigned int index) {
+// ritorna 0 se non ci sono stati errori
+int swap_set(vaddr_t address, unsigned int* ret_index) {
     struct iovec iov;
 	struct uio ku;
     unsigned int index;
@@ -65,7 +69,8 @@ int swap_set(vaddr_t address, unsigned int index) {
     spinlock_release(&swap_lock);
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);
     VOP_WRITE(swap->file, &ku);
-    return index;
+    *ret_index = index;
+    return 0;
 }
 
 void swap_close() {
@@ -73,6 +78,7 @@ void swap_close() {
     bitmap_destroy(swap->bitmap);
     init = false;
     spinlock_release(&swap_lock);
+    spinlock_cleanup(&swap_lock);
     vfs_close(swap->file);
     kfree(swap);
     swap = NULL;

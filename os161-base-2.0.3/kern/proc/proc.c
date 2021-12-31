@@ -82,15 +82,6 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
-#if OPT_PROJECT
-    proc->p_table = kmalloc(sizeof(pt));
-    if (proc->p_table == NULL) {
-        kfree(proc->p_name);
-        kfree(proc);
-        return NULL;
-    }
-#endif
-
         return proc;
 }
 
@@ -176,7 +167,6 @@ proc_destroy(struct proc *proc)
 
 	KASSERT(proc->p_numthreads == 0);
 	spinlock_cleanup(&proc->p_lock);
-	pt_destroy(proc->p_table);
 	kfree(proc->p_name);
 	kfree(proc);
 }

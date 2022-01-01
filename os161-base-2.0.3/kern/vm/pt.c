@@ -2,9 +2,9 @@
 #include <pt.h>
 #include <lib.h>
 #include <machine/vm.h>
-//#include <swapfile.h>
+#include <swapfile.h>
 
-//todo add sspinlock
+// todo add sspinlock
 
 #if 0
 vaddr_t get_victim(pt* table ) {

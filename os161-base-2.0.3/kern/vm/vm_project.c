@@ -71,7 +71,6 @@ static bool init = 0;
 
 
 void vm_bootstrap(void) {
-    //non so se serva
     spinlock_acquire(&vm_lock);
     unsigned int npages = ram_getsize() / PAGE_SIZE;
     spinlock_release(&vm_lock);

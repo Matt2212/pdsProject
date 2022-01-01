@@ -11,7 +11,7 @@ struct cm_entry {
     uint32_t occ : 1;
     uint32_t fixed : 1;
     uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
-    pt_entry *pt_entry; // se null la pagina è in swap
+    pt_entry *pt_entry; // se null e fixed = 0 allora la pagina è in swap
 };
 
 static struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
@@ -19,12 +19,16 @@ static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
 
-static unsigned int get_victim() {
-    static unsigned int prev_victim = 0;
-    int victim = prev_victim;
-
-    while (!(coremap[victim].occ && !coremap[victim].fixed && coremap[victim].pt_entry))
+static int get_victim() {
+    static int prev_victim = 0;
+    int victim = (prev_victim + coremap[prev_victim].nframes) % (npages);
+    bool loop = false;
+    while (!(coremap[victim].occ && !coremap[victim].fixed && coremap[victim].pt_entry != NULL)) {
+        if (loop) return -1;
         victim = (prev_victim + coremap[victim].nframes) % (npages);
+        if (victim == prev_victim)
+            loop = true;
+    }
     prev_victim = victim;
     return victim;
 }
@@ -59,7 +63,7 @@ int coremap_bootstrap(paddr_t firstpaddr) {
     return true;
 }
 
-static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {  // per il momento sono tutti fixed
+static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) { 
     #if 0
     unsigned int i, j, count = 0;
     if (num > MAX_CONT_PAGES || num == 0) return 0;
@@ -98,7 +102,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {  //
         spinlock_release(&coremap_lock);
         return 0;
     } else if (!found) {
-        get_victim();
+        i = get_victim();
         spinlock_release(&coremap_lock);
         // swappa
         spinlock_acquire(&coremap_lock);
@@ -184,4 +188,7 @@ void coremap_destroy() {
     coremap = NULL;
     spinlock_cleanup(&coremap_lock);
     first_page = 0;
+    // int test = get_victim();
+    // test = get_victim();
+    // (void)test;
 }

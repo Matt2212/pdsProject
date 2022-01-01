@@ -62,7 +62,7 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
     }
     if (bitmap_alloc(swap->bitmap, &index) == ENOSPC){
         spinlock_release(&swap_lock);
-        panic("OUT OF MEMORY");
+        panic("Out of swap space");
         return ENOSPC;
     }
 

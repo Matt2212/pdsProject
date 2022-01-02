@@ -45,7 +45,6 @@ void pt_destroy(pt* table){
             kfree(table->table[i]); // dealloco i blocchi utilizzati per contenere e entry
         }
     }
-    kfree(table);
 }
 
 void init_rows(pt* table, unsigned int index) {

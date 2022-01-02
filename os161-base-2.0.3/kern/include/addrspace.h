@@ -34,17 +34,15 @@
  * Address space structure and operations.
  */
 
+#include <vm.h>
+
 #include "opt-dumbvm.h"
 #include "opt-project.h"
-
-#include <vm.h>
 #if OPT_PROJECT
 #include <pt.h>
 #endif
 
-
 struct vnode;
-
 
 /*
  * Address space - data structure associated with the virtual memory
@@ -52,26 +50,41 @@ struct vnode;
  *
  * You write this.
  */
+struct segment {
+    uint32_t p_vaddr;     /* indirizzo base del segmento */
+    uint32_t p_offset;    /* all'inizio rappresenta l'offset del segmento nel file offset prossimo blocco da leggere nell'eseguibile */
+    uint32_t p_filesz;    /* dimensione in byte del segmento nel file eseguibile */
+    uint32_t p_memsz;     /* dimensione in byte del segmento in memoria */
+    uint8_t readable : 1; /* permessi */
+    uint8_t writable : 1;
+    uint8_t executable : 1;
+
+}
 
 struct addrspace {
 #if OPT_DUMBVM
-        vaddr_t as_vbase1;
-        paddr_t as_pbase1;
-        size_t as_npages1;
-        vaddr_t as_vbase2;
-        paddr_t as_pbase2;
-        size_t as_npages2;
-        paddr_t as_stackpbase;
+    vaddr_t as_vbase1;
+    paddr_t as_pbase1;
+    size_t as_npages1;
+    vaddr_t as_vbase2;
+    paddr_t as_pbase2;
+    size_t as_npages2;
+    paddr_t as_stackpbase;
 #else
-        vaddr_t as_vbase1;
-        paddr_t as_pbase1;
-        size_t as_npages1;
-        vaddr_t as_vbase2;
-        paddr_t as_pbase2;
-        size_t as_npages2;
-        paddr_t as_stackpbase;
+#if 1
+    vaddr_t as_vbase1;
+    paddr_t as_pbase1;
+    size_t as_npages1;
+    vaddr_t as_vbase2;
+    paddr_t as_pbase2;
+    size_t as_npages2;
+    paddr_t as_stackpbase;
+#else
+    struct segment *segments; /* tabella dei segmenti */
+    uint32_t n_segments;      /* numero dei segmenti (dimensione tabella dei segmenti) */
+#endif
 
-        pt* page_table;
+    pt *page_table; /* tabella delle pagine */
 #endif
 };
 
@@ -117,20 +130,19 @@ struct addrspace {
  */
 
 struct addrspace *as_create(void);
-int               as_copy(struct addrspace *src, struct addrspace **ret);
-void              as_activate(void);
-void              as_deactivate(void);
-void              as_destroy(struct addrspace *);
+int as_copy(struct addrspace *src, struct addrspace **ret);
+void as_activate(void);
+void as_deactivate(void);
+void as_destroy(struct addrspace *);
 
-int               as_define_region(struct addrspace *as,
-                                   vaddr_t vaddr, size_t sz,
-                                   int readable,
-                                   int writeable,
-                                   int executable);
-int               as_prepare_load(struct addrspace *as);
-int               as_complete_load(struct addrspace *as);
-int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
-
+int as_define_region(struct addrspace *as,
+                     vaddr_t vaddr, size_t sz,
+                     int readable,
+                     int writeable,
+                     int executable);
+int as_prepare_load(struct addrspace *as);
+int as_complete_load(struct addrspace *as);
+int as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
 /*
  * Functions in loadelf.c
@@ -141,5 +153,10 @@ int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
 
+#if OPT_PROJECT && 0
+
+int as_define_segments(struct addrspace *as, unsigned int n);
+
+#endif
 
 #endif /* _ADDRSPACE_H_ */

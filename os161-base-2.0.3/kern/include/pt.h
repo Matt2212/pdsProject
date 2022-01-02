@@ -1,4 +1,4 @@
-#ifndef PT_
+#ifndef PT_H
 #define PT_H
 
 #include <types.h>

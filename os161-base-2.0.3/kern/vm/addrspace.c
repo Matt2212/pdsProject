@@ -29,10 +29,10 @@
 
 #include <types.h>
 #include <kern/errno.h>
-#include <lib.h>
 #include <addrspace.h>
-#include <vm.h>
+#include <lib.h>
 #include <proc.h>
+#include <vm.h>
 
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -41,78 +41,79 @@
  */
 
 struct addrspace *
-as_create(void)
-{
-	struct addrspace *as;
+as_create(void) {
+    struct addrspace *as;
 
-	as = kmalloc(sizeof(struct addrspace));
-	if (as == NULL) {
-		return NULL;
-	}
+    as = kmalloc(sizeof(struct addrspace));
+    if (as == NULL) {
+        return NULL;
+    }
 
-	/*
-	 * Initialize as needed.
-	 */
+    as->page_table = kmalloc(sizeof(pt));
+    if (as == NULL) {
+        kfree(as);
+        return NULL;
+    }
+
+    as->segments = NULL;
+    as->n_segments = 0;
+    /*
+     * Initialize as needed.
+     */
     return as;
 }
 
-int
-as_copy(struct addrspace *old, struct addrspace **ret)
-{
-	struct addrspace *newas;
+int as_copy(struct addrspace *old, struct addrspace **ret) {
+    struct addrspace *newas;
 
-	newas = as_create();
-	if (newas==NULL) {
-		return ENOMEM;
-	}
+    newas = as_create();
+    if (newas == NULL) {
+        return ENOMEM;
+    }
 
-	/*
-	 * Write this.
-	 */
+    /*
+     * Write this.
+     */
 
-	(void)old;
+    (void)old;
 
-	*ret = newas;
-	return 0;
+    *ret = newas;
+    return 0;
 }
 
-void
-as_destroy(struct addrspace *as)
-{
-	/*
-	 * Clean up as needed.
-	 */
+void as_destroy(struct addrspace *as) {
+    /*
+     * Clean up as needed.
+     */
+    kfree(as->segments);
+    pt_destroy(as->page_table);
 
-        kfree(as);
+    kfree(as);
 }
 
-void
-as_activate(void)
-{
-	struct addrspace *as;
+void as_activate(void) {
+    struct addrspace *as;
 
-	as = proc_getas();
-	if (as == NULL) {
-		/*
-		 * Kernel thread without an address space; leave the
-		 * prior address space in place.
-		 */
-		return;
-	}
+    as = proc_getas();
+    if (as == NULL) {
+        /*
+         * Kernel thread without an address space; leave the
+         * prior address space in place.
+         */
+        return;
+    }
 
-	/*
-	 * Write this.
-	 */
+    /*
+     * Write this.
+     */
 }
 
-void
-as_deactivate(void)
-{
-	/*
-	 * Write this. For many designs it won't need to actually do
-	 * anything. See proc.c for an explanation of why it (might)
-	 * be needed.
-	 */
+void as_deactivate(void) {
+    /*
+     * Write this. For many designs it won't need to actually do
+     * anything. See proc.c for an explanation of why it (might)
+     * be needed.
+     */
 }
 
 /*
@@ -125,57 +126,77 @@ as_deactivate(void)
  * moment, these are ignored. When you write the VM system, you may
  * want to implement them.
  */
-int
-as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
-		 int readable, int writeable, int executable)
-{
-	/*
-	 * Write this.
-	 */
+int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
+                     int readable, int writeable, int executable) {
+    /*
+     * Write this.
+     */
 
-	(void)as;
-	(void)vaddr;
-	(void)memsize;
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-	return ENOSYS;
+    /* Definisco la size dei segmenti in termini di pagine 	(FORSE NON SERVE) */
+
+    /* Align the region. First, the base...
+    sz += vaddr & ~(vaddr_t)PAGE_FRAME;
+    vaddr &= PAGE_FRAME;
+
+    /* ...and now the length.x
+    sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
+
+    npages = sz / PAGE_SIZE;
+        */
+
+    as->segments[n_segments]->p_vaddr = vaddr;
+    as->segments[n_segments]->p_memsz = memsize;
+    as->segments[n_segments]->p_readable = readable;
+    as->segments[n_segments]->p_writable = writeable;
+    as->segments[n_segments]->p_executable = executable;
+
+    as->n_segments++;
+
+    return 0;
 }
 
-int
-as_prepare_load(struct addrspace *as)
-{
-	/*
-	 * Write this.
-	 */
+int as_prepare_load(struct addrspace *as) {
+    /*
+     * Write this.
+     */
 
-	(void)as;
-	return 0;
+    (void)as;
+    return 0;
 }
 
-int
-as_complete_load(struct addrspace *as)
-{
-	/*
-	 * Write this.
-	 */
+int as_complete_load(struct addrspace *as) {
+    /*
+     * Write this.
+     */
 
-	(void)as;
-	return 0;
+    (void)as;
+    return 0;
 }
 
-int
-as_define_stack(struct addrspace *as, vaddr_t *stackptr)
-{
-	/*
-	 * Write this.
-	 */
+int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
+    /*
+     * Write this.
+     */
 
-	(void)as;
+    (void)as;
 
-	/* Initial user-level stack pointer */
-	*stackptr = USERSTACK;
+    /* Initial user-level stack pointer */
+    *stackptr = USERSTACK;
 
-	return 0;
+    return 0;
 }
 
+#if OPT_PROJECT && 0
+
+int as_define_segments(struct addrspace *as, unsigned int n) {
+    as->segments = kmalloc(sizeof(struct segment) * n);
+    if (as->segments == NULL) {
+        pt_destroy(as->page_table);
+        kfree(as);
+        return ENOMEM;
+    }
+
+    return 0;
+}
+
+#endif

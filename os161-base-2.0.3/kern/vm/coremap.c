@@ -98,7 +98,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
             i += coremap[i].nframes;
     }
 
-    if (!found && num != 1) { // vedi se swappare piu di una pagina
+    if (!found && num != 1) {
         spinlock_release(&coremap_lock);
         return 0;
     } else if (!found) {
@@ -188,7 +188,4 @@ void coremap_destroy() {
     coremap = NULL;
     spinlock_cleanup(&coremap_lock);
     first_page = 0;
-    // int test = get_victim();
-    // test = get_victim();
-    // (void)test;
 }

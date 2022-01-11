@@ -1,8 +1,8 @@
-#ifndef PT_H
-#define PT_H
+#ifndef PT_H_
+#define PT_H_
 
 #include <types.h>
-
+#include <spinlock.h>
 #define TABLE_SIZE 1024
 
 #define GET_EXT_INDEX(addr) ( addr >> 22 )
@@ -20,16 +20,16 @@ typedef struct
     unsigned int valid:1;
     unsigned int swp:1;
     unsigned int read_only:1;
+    struct spinlock lock;
 } pt_entry;
 
 typedef struct
 {
     pt_entry *table[TABLE_SIZE];
+    //spinlock per l'intera table
 } pt;
 
 // fai i metodi thread safe
-
-//vaddr_t get_victim(pt* table); //indirizzo logico nello user space di una pagina indicata come vittima
 
 void init_rows(pt* table, unsigned int index); //creazione e inizializzazione di un blocco di 1024 entries
 
@@ -42,7 +42,6 @@ void pt_load_frame_from_file(pt* table, vaddr_t userptr, vaddr_t frame); //caric
 bool pt_load_free_frame(pt* table, vaddr_t userptr); //preleva un frame libero dalla lista dei frame liberi. Ritorna true se tutto va bene, false altrimenti
 
 void pt_destroy(pt* table); // distrugge la pagetable
-
 
 
 #endif

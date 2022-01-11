@@ -58,8 +58,7 @@ struct segment {
     uint8_t readable : 1; /* permessi */
     uint8_t writable : 1;
     uint8_t executable : 1;
-
-}
+};
 
 struct addrspace {
 #if OPT_DUMBVM

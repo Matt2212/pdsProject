@@ -4,7 +4,7 @@
 #include <machine/vm.h>
 #include <swapfile.h>
 
-// todo add sspinlock
+// TODO add spinlock
 
 #if 0
 vaddr_t get_victim(pt* table ) {

@@ -225,6 +225,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     return 0;
 }
 
+// Per il momento non compila, queste funzioni devono essere riadattate in "addrspace.c"
 struct addrspace *
 as_create(void) {
     struct addrspace *as = kmalloc(sizeof(struct addrspace));

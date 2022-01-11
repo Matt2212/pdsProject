@@ -55,8 +55,6 @@ as_create(void) {
         return NULL;
     }
 
-    as->segments = NULL;
-    as->n_segments = 0;
     /*
      * Initialize as needed.
      */
@@ -127,30 +125,38 @@ void as_deactivate(void) {
  * want to implement them.
  */
 int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
-                     int readable, int writeable, int executable) {
-    /*
-     * Write this.
-     */
+                     int readable, int writeable, int executable
+                     ) {
+    
 
-    /* Definisco la size dei segmenti in termini di pagine 	(FORSE NON SERVE) */
+    static int index = 0;
+    if(index > N_SEGMENTS)
+        {
+            panic("Too many regions!\n");
+            return ENOSYS;
+        }
 
-    /* Align the region. First, the base...
-    sz += vaddr & ~(vaddr_t)PAGE_FRAME;
-    vaddr &= PAGE_FRAME;
+    as->segments[index].p_vaddr = vaddr;
+    as->segments[index].p_memsz = memsize;
+    as->segments[index].readable = readable;
+    as->segments[index].writable = writeable;
+    as->segments[index].executable = executable;
 
-    /* ...and now the length.x
-    sz = (sz + PAGE_SIZE - 1) & PAGE_FRAME;
+    
 
-    npages = sz / PAGE_SIZE;
-        */
 
-    as->segments[n_segments]->p_vaddr = vaddr;
-    as->segments[n_segments]->p_memsz = memsize;
-    as->segments[n_segments]->p_readable = readable;
-    as->segments[n_segments]->p_writable = writeable;
-    as->segments[n_segments]->p_executable = executable;
 
-    as->n_segments++;
+    init_rows(as->page_table, (unsigned int) as->segments[index].p_vaddr); 
+    //    return ENOMEM;
+
+    if  (!pt_load_free_frame(as->page_table, (unsigned int) as->segments[index].p_vaddr))
+        return ENOMEM;
+
+    
+
+    index++;
+
+    
 
     return 0;
 }
@@ -178,25 +184,13 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
      * Write this.
      */
 
-    (void)as;
+    as->stack_limit = USERSTACK - PAGE_SIZE;   
+    // metti init_rows in un if (per ora torna void)
+    init_rows(as->page_table, (unsigned int) as->stack_limit);  
+    //    return ENOMEM;              /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
 
     /* Initial user-level stack pointer */
     *stackptr = USERSTACK;
 
     return 0;
 }
-
-#if OPT_PROJECT && 0
-
-int as_define_segments(struct addrspace *as, unsigned int n) {
-    as->segments = kmalloc(sizeof(struct segment) * n);
-    if (as->segments == NULL) {
-        pt_destroy(as->page_table);
-        kfree(as);
-        return ENOMEM;
-    }
-
-    return 0;
-}
-
-#endif

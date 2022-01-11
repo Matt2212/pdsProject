@@ -40,6 +40,8 @@
 #include "opt-project.h"
 #if OPT_PROJECT
 #include <pt.h>
+#define N_SEGMENTS 2
+#define PROJECT_STACKMAXADDRESS USERSTACK-(18 * PAGE_SIZE)
 #endif
 
 struct vnode;
@@ -50,16 +52,17 @@ struct vnode;
  *
  * You write this.
  */
+#if OPT_PROJECT 
 struct segment {
     uint32_t p_vaddr;     /* indirizzo base del segmento */
-    uint32_t p_offset;    /* all'inizio rappresenta l'offset del segmento nel file offset prossimo blocco da leggere nell'eseguibile */
-    uint32_t p_filesz;    /* dimensione in byte del segmento nel file eseguibile */
+    uint32_t p_offset;    /* all'inizio rappresenta l'offset del segmento nel file offset, negli altri casi rappresenta il primo byte da leggere nell'eseguibile */
+    uint32_t p_file_end;  /* byte successivo all'ultimo byte del segmento nel file eseguibile */
     uint32_t p_memsz;     /* dimensione in byte del segmento in memoria */
     uint8_t readable : 1; /* permessi */
     uint8_t writable : 1;
     uint8_t executable : 1;
 };
-
+#endif
 struct addrspace {
 #if OPT_DUMBVM
     vaddr_t as_vbase1;
@@ -69,22 +72,17 @@ struct addrspace {
     paddr_t as_pbase2;
     size_t as_npages2;
     paddr_t as_stackpbase;
-#else
-#if 1
-    vaddr_t as_vbase1;
-    paddr_t as_pbase1;
-    size_t as_npages1;
-    vaddr_t as_vbase2;
-    paddr_t as_pbase2;
-    size_t as_npages2;
-    paddr_t as_stackpbase;
-#else
-    struct segment *segments; /* tabella dei segmenti */
-    uint32_t n_segments;      /* numero dei segmenti (dimensione tabella dei segmenti) */
-#endif
+#elif OPT_PROJECT
+
+    struct segment segments[N_SEGMENTS]; /* tabella dei segmenti */
+    struct vnode *file;
+    vaddr_t stack_limit;    /* indirizzo ultima pagina allocata nello stack */
 
     pt *page_table; /* tabella delle pagine */
+
 #endif
+
+
 };
 
 /*
@@ -138,7 +136,8 @@ int as_define_region(struct addrspace *as,
                      vaddr_t vaddr, size_t sz,
                      int readable,
                      int writeable,
-                     int executable);
+                     int executable
+                     );
 int as_prepare_load(struct addrspace *as);
 int as_complete_load(struct addrspace *as);
 int as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
@@ -152,10 +151,14 @@ int as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
 
-#if OPT_PROJECT && 0
+#if OPT_PROJECT
 
-int as_define_segments(struct addrspace *as, unsigned int n);
-
+int
+load_segment(struct addrspace *as, struct vnode *v,
+	     off_t offset, vaddr_t vaddr,
+	     size_t memsize, size_t filesize,
+	     int is_executable);
 #endif
+
 
 #endif /* _ADDRSPACE_H_ */

@@ -4,6 +4,9 @@
 #include <machine/vm.h>
 #include <swapfile.h>
 
+
+#include <addrspace.h>
+
 // TODO add spinlock
 
 #if 0
@@ -49,6 +52,7 @@ void pt_destroy(pt* table){
 
 void init_rows(pt* table, unsigned int index) {
     int i = 0;
+    index = GET_EXT_INDEX(index);
     table->table[index] = kmalloc(sizeof(pt_entry)*TABLE_SIZE);
     if (table->table[index] == NULL) {
         panic("No space left on the device");

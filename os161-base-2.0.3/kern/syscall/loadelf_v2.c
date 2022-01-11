@@ -60,6 +60,9 @@
 #include <vnode.h>
 #include <elf.h>
 
+#include <vm.h>
+
+
 /*
  * Load a segment at virtual address VADDR. The segment in memory
  * extends from VADDR up to (but not including) VADDR+MEMSIZE. The
@@ -74,7 +77,7 @@
  * change this code to not use uiomove, be sure to check for this case
  * explicitly.
  */
-static
+
 int
 load_segment(struct addrspace *as, struct vnode *v,
 	     off_t offset, vaddr_t vaddr,
@@ -161,6 +164,8 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	struct addrspace *as;
 
 	as = proc_getas();
+
+	as->file = v;
 
 	/*
 	 * Read the executable header from offset 0 in the file.
@@ -257,13 +262,15 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 		if (result) {
 			return result;
 		}
+		as->segments[i]->p_file_end = ph.p_offset + ph.p_filesz;
+    	as->segments[i]->p_offset = ph.p_offset;
 	}
 
 	result = as_prepare_load(as);
 	if (result) {
 		return result;
 	}
-
+	
 	/*
 	 * Now actually load each segment.
 	 */
@@ -294,12 +301,22 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 			return ENOEXEC;
 		}
 
+		uint32_t m_size = PAGE_SIZE - (PAGE_FRAME & ph.p_vaddr);
+		m_size = (m_size < ph.p_memsz) ? m_size : ph.p_memsz; 
+
+		uint32_t f_size = (ph.p_filesz < m_size) ? ph.p_filesz : m_size;
+
+
 		result = load_segment(as, v, ph.p_offset, ph.p_vaddr,
-				      ph.p_memsz, ph.p_filesz,
+				      m_size, f_size,
 				      ph.p_flags & PF_X);
+		
 		if (result) {
 			return result;
 		}
+
+
+		as->segments[i].p_offset += f_size;
 	}
 
 	result = as_complete_load(as);

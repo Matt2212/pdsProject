@@ -74,6 +74,8 @@
  * change this code to not use uiomove, be sure to check for this case
  * explicitly.
  */
+
+/* rimetti lo static */
 static
 int
 load_segment(struct addrspace *as, struct vnode *v,

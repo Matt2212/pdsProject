@@ -26,20 +26,20 @@ typedef struct
 typedef struct
 {
     pt_entry *table[TABLE_SIZE];
-    //spinlock per l'intera table
+    //spinlock per l'intera table o non serve?
 } pt;
 
 // fai i metodi thread safe
 
-void init_rows(pt* table, unsigned int index); //creazione e inizializzazione di un blocco di 1024 entries
+int init_rows(pt* table, unsigned int index); //creazione e inizializzazione di un blocco di 1024 entries
 
-paddr_t pt_get_frame_from_page(pt* table, vaddr_t addr, uint8_t* read_only); // da richiamre solo su frame correttamente caricati o in swap restituisce l'indice del frame associato alla pagina, il frame potrebbe trovarsi in memoria o im swap
+int pt_get_frame_from_page(pt* table, vaddr_t addr, paddr_t* frame); // da richiamre per risolvere mediante la Page Table la corrispondenza tra frame e page
 #if 0
 void pt_load_frame_from_swap(pt* table, vaddr_t requested); //effettua lo swap tra un frame in memoria (swap out) e un frame nel file di swap (swap-in)
 
 void pt_load_frame_from_file(pt* table, vaddr_t userptr, vaddr_t frame); //carica un frame da disco e lo scrive nel frame di con logico del kernel addr
 #endif
-bool pt_load_free_frame(pt* table, vaddr_t userptr); //preleva un frame libero dalla lista dei frame liberi. Ritorna true se tutto va bene, false altrimenti
+int pt_load_free_frame(pt* table, vaddr_t userptr); //preleva un frame libero dalla lista dei frame liberi. Ritorna true se tutto va bene, false altrimenti
 
 void pt_destroy(pt* table); // distrugge la pagetable
 

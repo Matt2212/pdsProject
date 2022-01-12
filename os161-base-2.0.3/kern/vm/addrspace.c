@@ -146,10 +146,10 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 
 
 
-    init_rows(as->page_table, (unsigned int) as->segments[index].p_vaddr); 
-    //    return ENOMEM;
+    if(init_rows(as->page_table, (unsigned int) as->segments[index].p_vaddr)) 
+        return ENOMEM;
 
-    if  (!pt_load_free_frame(as->page_table, (unsigned int) as->segments[index].p_vaddr))
+    if  (pt_load_free_frame(as->page_table, (unsigned int) as->segments[index].p_vaddr))
         return ENOMEM;
 
     
@@ -186,11 +186,31 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 
     as->stack_limit = USERSTACK - PAGE_SIZE;   
     // metti init_rows in un if (per ora torna void)
-    init_rows(as->page_table, (unsigned int) as->stack_limit);  
-    //    return ENOMEM;              /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
+    if(init_rows(as->page_table, (unsigned int) as->stack_limit))  
+        return ENOMEM;              /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
 
     /* Initial user-level stack pointer */
     *stackptr = USERSTACK;
 
     return 0;
 }
+
+#if OPT_PROJECT
+int load_page(struct addrspace *as, vaddr_t vaddr){
+
+    int i=0;
+    for(i=0; i<N_SEGMENTS ; i++){
+         if ( vaddr > as->segments[i].p_vaddr && vaddr < as->segments[i].p_memsz)
+            break;
+    }
+    if( as->segments[i].p_offset < as->segments[i].p_file_end ){
+        int amount_to_read = PAGE_SIZE;
+        if( PAGE_SIZE > as->segments[i].p_file_end - as->segments[i].p_offset)
+            amount_to_read = as->segments[i].p_file_end - as->segments[i].p_offset;
+
+        load_segment(as, as->file , as->segments[i].p_offset, vaddr, PAGE_SIZE,  amount_to_read, as->segments[i].executable);
+        as->segments[i].p_offset += amount_to_read;
+    }
+
+}
+#endif

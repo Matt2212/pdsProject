@@ -52,7 +52,7 @@ int coremap_bootstrap(paddr_t firstpaddr) {
         coremap[i].pt_entry = NULL;
     }
     for (; i < npages; i++) {
-        coremap[i].occ = 0;
+        coremap[i].occ = false;
         coremap[i].fixed = false;
         coremap[i].nframes = 0;
         coremap[i].pt_entry = NULL;
@@ -104,7 +104,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
     } else if (!found) {
         i = get_victim();
         spinlock_release(&coremap_lock);
-        // swappa
+        // swappa se non c'e' spaazio ritorni null
         spinlock_acquire(&coremap_lock);
     }
 

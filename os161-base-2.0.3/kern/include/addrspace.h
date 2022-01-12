@@ -41,7 +41,7 @@
 #if OPT_PROJECT
 #include <pt.h>
 #define N_SEGMENTS 2
-#define PROJECT_STACKMAXADDRESS USERSTACK-(18 * PAGE_SIZE)
+#define PROJECT_STACK_MIN_ADDRESS USERSTACK-(18 * PAGE_SIZE)
 #endif
 
 struct vnode;
@@ -82,6 +82,18 @@ struct addrspace {
 
 #endif
 
+/* Stack Layout
+ * |  Stack Top (grows down)  |
+ * |                          |              
+ * |                          |
+ * |                          |
+ * |                          |
+ * |                          |
+ * |                          |
+ * |                          |
+ * |          DATA            |
+ * |          CODE            | 
+*/
 
 };
 
@@ -154,10 +166,14 @@ int load_elf(struct vnode *v, vaddr_t *entrypoint);
 #if OPT_PROJECT
 
 int
+load_page(struct addrspace *as, vaddr_t vaddr);
+
+int
 load_segment(struct addrspace *as, struct vnode *v,
 	     off_t offset, vaddr_t vaddr,
 	     size_t memsize, size_t filesize,
 	     int is_executable);
+
 #endif
 
 

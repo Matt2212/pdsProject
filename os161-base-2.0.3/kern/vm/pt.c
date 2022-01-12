@@ -50,34 +50,48 @@ void pt_destroy(pt* table){
     }
 }
 
-void init_rows(pt* table, unsigned int index) {
+int init_rows(pt* table, unsigned int index) {
     int i = 0;
     index = GET_EXT_INDEX(index);
     table->table[index] = kmalloc(sizeof(pt_entry)*TABLE_SIZE);
     if (table->table[index] == NULL) {
         panic("No space left on the device");
+        return ENOMEM;
     }
     for(; i < TABLE_SIZE; i++){ // forse inutile
         table->table[index][i].valid = false; // basta invalidare l' entry per far perdere di significato tutto il resto
     }
+    return 0;
 }
 
-// ritorna 0 in caso di errori
-paddr_t pt_get_frame_from_page(pt* table, vaddr_t addr, uint8_t* read_only) {
+
+int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     unsigned int exte, inte;
-    exte = GET_EXT_INDEX(addr);
-    inte = GET_INT_INDEX(addr);
-    if (table->table[exte] == NULL || !table->table[exte][inte].valid) return 0;
-    if (table->table[exte][inte].swp){
-        // TODO chied se meglio prendere le pagine libere per questo swapout
-        #if 0
-        pt_load_frame_from_swap(table, addr);
-        #endif
+    int err;
+    exte = GET_EXT_INDEX(fault_addr);
+    inte = GET_INT_INDEX(fault_addr);
+    
+    if(table->table[exte] == NULL)
+        err = init_rows();
+    
+    if(table->table[exte][inte].valid == false ){
+        // carico il frame da file
+        table->table[exte][inte].frame_no = get_swappable_frame(table->table[exte][inte]) >> 12;
+        if( frame == 0 )
+            return ENOMEM; 
+        table->table[exte][inte].valid = true;
+        err = load_page(proc_getas(), fault_addr, table->table[exte][inte]);
+        
     }
-    if (read_only != NULL) {
-        *read_only = table->table[exte][inte].read_only;
-    }
-    return table->table[exte][inte].frame_no << 12;
+    
+     
+
+    if(err)
+        return err;
+
+    
+    *frame = table->table[exte][inte].frame_no << 12;
+    return 0;
 }
 
 #if 0
@@ -98,12 +112,12 @@ void pt_load_frame_from_swap(pt* table, vaddr_t requested) {
     table->table[exte][inte].swp = false;
 }
 #endif
-bool pt_load_free_frame(pt* table, vaddr_t userptr) {
+int pt_load_free_frame(pt* table, vaddr_t userptr) {
     unsigned int exte, inte;
     exte = GET_EXT_INDEX(userptr);
     inte = GET_INT_INDEX(userptr);
     if (!(table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte])))
-        return false;
+        return ENOMEM;
     table->table[exte][inte].valid = true;
-    return true;
+    return 0;
 }

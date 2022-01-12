@@ -156,9 +156,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     uint8_t read_only;
     struct addrspace *as;
 
-    faultaddress &= PAGE_FRAME;
+    if( faultaddress == (vaddr_t) NULL && faultaddress >= (vaddr_t) MIPS_KSEG0)
+        return EFAULT;
 
-    DEBUG(DB_VM, "dumbvm: fault: 0x%x\n", faultaddress);
+    
 
     if (curproc == NULL) {
         /*
@@ -171,6 +172,24 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     as = proc_getas();
 
+    int e_fault = 1;
+    
+    for(i=0; i<N_SEGMENTS && e_fault; i++){
+         if ( faultaddress >  as->segments[i].p_vaddr && faultaddress < segments[i].p_memsz){
+            e_fault = 0;
+            read_only = !(as->segments[i].writable);
+         }
+
+    }
+
+    if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS )     // outside stack
+        // vedi se l'indirizzo deve essere compreso tra as->stack_limit e as->stack_limit+PAGE_SIZE
+        return EFAULT;
+
+    
+
+    DEBUG(DB_VM, "dumbvm: fault: 0x%x\n", faultaddress);
+
     if (as == NULL) {
         /*
          * No address space set up. This is probably also a
@@ -181,18 +200,31 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     switch (faulttype) {
         case VM_FAULT_READONLY:
+            // DA SISTEMARE
             as_destroy(as);
             /* thread exits. proc data structure will be lost */
             thread_exit();
             panic("thread_exit returned (should not happen)\n");
         case VM_FAULT_READ:
         case VM_FAULT_WRITE:
+            
+
+            if(read_only){
+                // DA SISTEMARE
+                as_destroy(as);
+                /* thread exits. proc data structure will be lost */
+                thread_exit();
+                panic("thread_exit returned (should not happen)\n");
+            }
+            
             break;
         default:
             return EINVAL;
     }
 
-    paddr = pt_get_frame_from_page(proc_getas()->page_table, faultaddress, &read_only);
+    // mettilo dentro a un IF
+    pt_get_frame_from_page(proc_getas()->page_table, faultaddress, &paddr);
+    faultaddress &= PAGE_FRAME;
 
     /* make sure it's page-aligned */
     KASSERT((paddr & PAGE_FRAME) == paddr);

@@ -301,7 +301,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 			return ENOEXEC;
 		}
 
-		uint32_t m_size = PAGE_SIZE - (PAGE_FRAME & ph.p_vaddr);
+		uint32_t m_size = PAGE_SIZE - (~PAGE_FRAME & ph.p_vaddr);
 		m_size = (m_size < ph.p_memsz) ? m_size : ph.p_memsz; 
 
 		uint32_t f_size = (ph.p_filesz < m_size) ? ph.p_filesz : m_size;

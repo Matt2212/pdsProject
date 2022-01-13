@@ -223,7 +223,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	 */
 
     
-    result = as_define_segmnets(as, eh.e_phnum);
+    
     
     if(result)
         return result;

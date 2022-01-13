@@ -4,8 +4,9 @@
 #include <machine/vm.h>
 #include <swapfile.h>
 
-
+#include <proc.h>
 #include <addrspace.h>
+#include <kern/errno.h>
 
 // TODO add spinlock
 
@@ -67,24 +68,23 @@ int init_rows(pt* table, unsigned int index) {
 
 int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     unsigned int exte, inte;
-    int err;
+    int err = 0;
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
     
     if(table->table[exte] == NULL)
-        err = init_rows();
-    
+        err = init_rows(table, fault_addr);
+    if(err)
+        return err;
     if(table->table[exte][inte].valid == false ){
         // carico il frame da file
-        table->table[exte][inte].frame_no = get_swappable_frame(table->table[exte][inte]) >> 12;
+        table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte]) >> 12;
         if( frame == 0 )
             return ENOMEM; 
         table->table[exte][inte].valid = true;
-        err = load_page(proc_getas(), fault_addr, table->table[exte][inte]);
-        
+        if (fault_addr < PROJECT_STACK_MIN_ADDRESS) // fuori dallo stack
+            err = load_page(proc_getas(), fault_addr); //table->table[exte][inte], passato come terzo parametro, ha senso? (dovrebbe essere già tutto in as*/
     }
-    
-     
 
     if(err)
         return err;

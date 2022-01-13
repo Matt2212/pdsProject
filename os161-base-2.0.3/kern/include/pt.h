@@ -19,7 +19,6 @@ typedef struct
     unsigned int frame_no:20;
     unsigned int valid:1;
     unsigned int swp:1;
-    unsigned int read_only:1;
     struct spinlock lock;
 } pt_entry;
 

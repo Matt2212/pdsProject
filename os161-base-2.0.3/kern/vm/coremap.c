@@ -2,7 +2,6 @@
 #include <types.h>
 #include <coremap.h>
 #include <lib.h>
-#include <pt.h>
 #include <spinlock.h>
 #include <vm.h>
 
@@ -129,7 +128,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
 #endif
 }
 
-paddr_t get_swappable_frame(void* entry) {
+paddr_t get_swappable_frame(pt_entry* entry) {
     return get_n_frames(1, false, entry);
 }
 

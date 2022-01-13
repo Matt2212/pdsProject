@@ -27,7 +27,7 @@
  * SUCH DAMAGE.
  */
 #include <types.h>
-#include <mips/tlb.h>
+
 #include <machine/vm.h>
 #include <addrspace.h>
 
@@ -61,7 +61,6 @@
 
 /* under dumbvm, always have 72k of user stack */
 /* (this must be > 64K so argument blocks of size ARG_MAX will fit) */
-#define DUMBVM_STACKPAGES 18
 
 /*
  * Wrap ram_stealmem in a spinlock.
@@ -153,7 +152,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     int i;
     uint32_t ehi, elo;
     int spl;
-    uint8_t read_only;
+    uint8_t read_only = 0;
     struct addrspace *as;
 
     if( faultaddress == (vaddr_t) NULL && faultaddress >= (vaddr_t) MIPS_KSEG0)
@@ -175,7 +174,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     int e_fault = 1;
     
     for(i=0; i<N_SEGMENTS && e_fault; i++){
-         if ( faultaddress >  as->segments[i].p_vaddr && faultaddress < segments[i].p_memsz){
+         if ( faultaddress >  as->segments[i].p_vaddr && faultaddress < as->segments[i].p_memsz){
             e_fault = 0;
             read_only = !(as->segments[i].writable);
          }
@@ -183,7 +182,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS )     // outside stack
-        // vedi se l'indirizzo deve essere compreso tra as->stack_limit e as->stack_limit+PAGE_SIZE
         return EFAULT;
 
     
@@ -223,7 +221,11 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     // mettilo dentro a un IF
-    pt_get_frame_from_page(proc_getas()->page_table, faultaddress, &paddr);
+    
+    int err = pt_get_frame_from_page(proc_getas()->page_table, faultaddress, &paddr);
+    if(err != 0)
+        return err;
+    
     faultaddress &= PAGE_FRAME;
 
     /* make sure it's page-aligned */
@@ -258,52 +260,12 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 }
 
 // Per il momento non compila, queste funzioni devono essere riadattate in "addrspace.c"
-struct addrspace *
-as_create(void) {
-    struct addrspace *as = kmalloc(sizeof(struct addrspace));
-    if (as == NULL) {
-        return NULL;
-    }
+#if 0
 
-    as->as_vbase1 = 0;
-    as->as_pbase1 = 0;
-    as->as_npages1 = 0;
-    as->as_vbase2 = 0;
-    as->as_pbase2 = 0;
-    as->as_npages2 = 0;
-    as->as_stackpbase = 0;
-#if OPT_PROJECT
-    as->page_table = kmalloc(sizeof(pt));
-#endif
-    return as;
-}
 
-void as_destroy(struct addrspace *as) {
-    dumbvm_can_sleep();
-#if OPT_PROJECT
-    pt_destroy(as->page_table);
-#endif
-    kfree(as);
-}
 
-void as_activate(void) {
-    int i, spl;
-    struct addrspace *as;
 
-    as = proc_getas();
-    if (as == NULL) {
-        return;
-    }
 
-    /* Disable interrupts on this CPU while frobbing the TLB. */
-    spl = splhigh();
-
-    for (i = 0; i < NUM_TLB; i++) {
-        tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
-    }
-
-    splx(spl);
-}
 
 void as_deactivate(void) {
     /* nothing */
@@ -435,3 +397,4 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
     *ret = new;
     return 0;
 }
+#endif

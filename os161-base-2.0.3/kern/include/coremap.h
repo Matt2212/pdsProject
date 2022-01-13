@@ -2,7 +2,7 @@
 #define _COREMAP_H_
 
 #include <types.h>
-
+#include <pt.h>
 /**
  * 
  * Lista dei frame liberi, ogni elemento punta al successivo, per ottenere il numero di frame bisogna 
@@ -30,7 +30,7 @@ void coremap_create(unsigned int npages);
 
 int coremap_bootstrap(paddr_t firstpaddr);
 
-paddr_t get_swappable_frame(void* entry);
+paddr_t get_swappable_frame(pt_entry* entry);
 
 paddr_t get_kernel_frame(unsigned int num);
 

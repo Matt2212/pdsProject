@@ -76,7 +76,6 @@ struct addrspace {
 
     struct segment segments[N_SEGMENTS]; /* tabella dei segmenti */
     struct vnode *file;
-    vaddr_t stack_limit;    /* indirizzo ultima pagina allocata nello stack */
 
     pt *page_table; /* tabella delle pagine */
 

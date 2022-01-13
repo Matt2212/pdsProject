@@ -33,7 +33,10 @@
 #include <lib.h>
 #include <proc.h>
 #include <vm.h>
-
+#if OPT_PROJECT
+#include <spl.h>
+#include <mips/tlb.h>
+#endif
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
  * assignment, this file is not compiled or linked or in any way
@@ -83,13 +86,31 @@ void as_destroy(struct addrspace *as) {
     /*
      * Clean up as needed.
      */
-    kfree(as->segments);
+#if OPT_PROJECT
     pt_destroy(as->page_table);
-
+#endif
     kfree(as);
 }
 
 void as_activate(void) {
+#if OPT_PROJECT
+    int i, spl;
+    struct addrspace *as;
+
+    as = proc_getas();
+    if (as == NULL) {
+        return;
+    }
+
+    /* Disable interrupts on this CPU while frobbing the TLB. */
+    spl = splhigh();
+
+    for (i = 0; i < NUM_TLB; i++) {
+        tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+    }
+
+    splx(spl);
+#else
     struct addrspace *as;
 
     as = proc_getas();
@@ -104,6 +125,7 @@ void as_activate(void) {
     /*
      * Write this.
      */
+#endif
 }
 
 void as_deactivate(void) {
@@ -127,8 +149,8 @@ void as_deactivate(void) {
 int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
                      int readable, int writeable, int executable
                      ) {
-    
 
+#if OPT_PROJECT
     static int index = 0;
     if(index > N_SEGMENTS)
         {
@@ -152,13 +174,10 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
     if  (pt_load_free_frame(as->page_table, (unsigned int) as->segments[index].p_vaddr))
         return ENOMEM;
 
-    
-
     index++;
 
-    
-
     return 0;
+#endif
 }
 
 int as_prepare_load(struct addrspace *as) {
@@ -184,33 +203,37 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
      * Write this.
      */
 
-    as->stack_limit = USERSTACK - PAGE_SIZE;   
+#if OPT_PROJECT
     // metti init_rows in un if (per ora torna void)
-    if(init_rows(as->page_table, (unsigned int) as->stack_limit))  
+    if(init_rows(as->page_table, (vaddr_t) USERSTACK - PAGE_SIZE))
         return ENOMEM;              /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
-
     /* Initial user-level stack pointer */
     *stackptr = USERSTACK;
-
+#endif
     return 0;
 }
 
 #if OPT_PROJECT
-int load_page(struct addrspace *as, vaddr_t vaddr){
-
+int load_page(struct addrspace *as, vaddr_t vaddr) {
     int i=0;
+
     for(i=0; i<N_SEGMENTS ; i++){
          if ( vaddr > as->segments[i].p_vaddr && vaddr < as->segments[i].p_memsz)
             break;
     }
-    if( as->segments[i].p_offset < as->segments[i].p_file_end ){
+    if( as->segments[i].p_offset < as->segments[i].p_file_end ){ //load da file
         int amount_to_read = PAGE_SIZE;
         if( PAGE_SIZE > as->segments[i].p_file_end - as->segments[i].p_offset)
             amount_to_read = as->segments[i].p_file_end - as->segments[i].p_offset;
 
-        load_segment(as, as->file , as->segments[i].p_offset, vaddr, PAGE_SIZE,  amount_to_read, as->segments[i].executable);
+        int res = load_segment(as, as->file , as->segments[i].p_offset, vaddr, PAGE_SIZE, amount_to_read, as->segments[i].executable);
+        if(res)
+            return res;
+
         as->segments[i].p_offset += amount_to_read;
     }
+    
+    return 0;
 
 }
 #endif

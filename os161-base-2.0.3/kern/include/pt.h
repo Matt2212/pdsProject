@@ -19,7 +19,7 @@ typedef struct
     unsigned int frame_no:20;
     unsigned int valid:1;
     unsigned int swp:1;
-    struct spinlock lock;
+    //struct spinlock lock;
 } pt_entry;
 
 typedef struct

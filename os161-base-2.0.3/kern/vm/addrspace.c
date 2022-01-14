@@ -151,7 +151,7 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
                      ) {
 
 #if OPT_PROJECT
-    static int index = 0;
+    as->index = 0;               // sposta in struct addrspace (no static)
     if(index > N_SEGMENTS)
         {
             panic("Too many regions!\n");
@@ -168,13 +168,9 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 
 
 
-    if(init_rows(as->page_table, (unsigned int) as->segments[index].p_vaddr)) 
-        return ENOMEM;
+    
 
-    if  (pt_load_free_frame(as->page_table, (unsigned int) as->segments[index].p_vaddr))
-        return ENOMEM;
-
-    index++;
+    as->index++;
 
     return 0;
 #endif
@@ -205,8 +201,9 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 
 #if OPT_PROJECT
     // metti init_rows in un if (per ora torna void)
-    if(init_rows(as->page_table, (vaddr_t) USERSTACK - PAGE_SIZE))
-        return ENOMEM;              /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
+    
+                 /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
+    (void) as;
     /* Initial user-level stack pointer */
     *stackptr = USERSTACK;
 #endif
@@ -221,17 +218,40 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
          if ( vaddr > as->segments[i].p_vaddr && vaddr < as->segments[i].p_memsz)
             break;
     }
-    if( as->segments[i].p_offset < as->segments[i].p_file_end ){ //load da file
-        int amount_to_read = PAGE_SIZE;
-        if( PAGE_SIZE > as->segments[i].p_file_end - as->segments[i].p_offset)
-            amount_to_read = as->segments[i].p_file_end - as->segments[i].p_offset;
 
-        int res = load_segment(as, as->file , as->segments[i].p_offset, vaddr, PAGE_SIZE, amount_to_read, as->segments[i].executable);
-        if(res)
-            return res;
 
-        as->segments[i].p_offset += amount_to_read;
-    }
+    vaddr = vaddr & PAGE_FRAME;
+
+    if( vaddr < as->segments[i].p_vaddr )  // se l'inizio di pagina non appartiene al segmento
+        vaddr = as->segments[i].p_vaddr;
+    
+        
+    //  quanta memoria scrivere (al più 4096)
+    int m_size = PAGE_SIZE - (~PAGE_FRAME & vaddr);
+
+
+    // il limite del segmento appartiene alla pagina da caricare? 
+    if( as->segments[i].p_vaddr + as->segments[i].p_memsz > vaddr && as->segments[i].p_vaddr + as->segments[i].p_memsz < vaddr + m_size ) 
+        m_size = (as->segments[i].p_vaddr + as->segments[i].p_memsz) - vaddr;
+   
+    
+    // calcolo offset file
+    
+    
+    int first_offset = as->segments[i].p_file_start + vaddr - as->segments[i].p_vaddr;
+    
+    if ( first_offset >= as->segments[i].p_file_end )
+        return 0;
+
+
+    // calcolo quantità da leggere da file
+    int f_size = (m_size > as->segments[i].p_file_end - first_offset) ? as->segments[i].p_file_end - first_offset : m_size;
+
+
+    int res = load_segment(as, as->file, as->segments[i].p_file_start, vaddr, m_size, f_size, as->segments[i].executable);
+    
+    if(res)
+        return res;    
     
     return 0;
 

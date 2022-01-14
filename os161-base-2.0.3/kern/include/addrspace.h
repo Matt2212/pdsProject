@@ -55,7 +55,7 @@ struct vnode;
 #if OPT_PROJECT 
 struct segment {
     uint32_t p_vaddr;     /* indirizzo base del segmento */
-    uint32_t p_offset;    /* all'inizio rappresenta l'offset del segmento nel file offset, negli altri casi rappresenta il primo byte da leggere nell'eseguibile */
+    uint32_t p_file_start;    /* all'inizio rappresenta l'offset del segmento nel file offset, negli altri casi rappresenta il primo byte da leggere nell'eseguibile */
     uint32_t p_file_end;  /* byte successivo all'ultimo byte del segmento nel file eseguibile */
     uint32_t p_memsz;     /* dimensione in byte del segmento in memoria */
     uint8_t readable : 1; /* permessi */
@@ -75,7 +75,10 @@ struct addrspace {
 #elif OPT_PROJECT
 
     struct segment segments[N_SEGMENTS]; /* tabella dei segmenti */
+    int index;
+
     struct vnode *file;
+
 
     pt *page_table; /* tabella delle pagine */
 

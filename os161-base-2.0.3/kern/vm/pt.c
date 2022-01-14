@@ -51,11 +51,11 @@ void pt_destroy(pt* table){
     }
 }
 
-int init_rows(pt* table, unsigned int index) {
+static int init_rows(pt* table, unsigned int index) {
     int i = 0;
     index = GET_EXT_INDEX(index);
-    if (table->table[index] != NULL)           //  PROVVISORIO
-        return 0;
+    
+
     table->table[index] = kmalloc(sizeof(pt_entry)*TABLE_SIZE);
     if (table->table[index] == NULL) {
         panic("No space left on the device");
@@ -67,6 +67,8 @@ int init_rows(pt* table, unsigned int index) {
     return 0;
 }
 
+
+// rendi sinctronizzata "pt_get_frame_from_page" (spinlock, condition variable)
 
 int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     unsigned int exte, inte;
@@ -114,12 +116,3 @@ void pt_load_frame_from_swap(pt* table, vaddr_t requested) {
     table->table[exte][inte].swp = false;
 }
 #endif
-int pt_load_free_frame(pt* table, vaddr_t userptr) {
-    unsigned int exte, inte;
-    exte = GET_EXT_INDEX(userptr);
-    inte = GET_INT_INDEX(userptr);
-    if (!(table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte]) >> 12))
-        return ENOMEM;
-    table->table[exte][inte].valid = true;
-    return 0;
-}

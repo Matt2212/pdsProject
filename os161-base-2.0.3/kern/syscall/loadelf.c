@@ -575,7 +575,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 			return result;
 		}
 		as->segments[i].p_file_end = ph.p_offset + ph.p_filesz;
-    	as->segments[i].p_offset = ph.p_offset;
+    	as->segments[i]->p_file_start = ph.p_offset;
 	}
 
 	result = as_prepare_load(as);
@@ -587,6 +587,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	 * Now actually load each segment.
 	 */
 
+	#if 0
 	for (i=0; i<eh.e_phnum; i++) {
 		off_t offset = eh.e_phoff + i*eh.e_phentsize;
 		uio_kinit(&iov, &ku, &ph, sizeof(ph), offset, UIO_READ);
@@ -635,6 +636,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	if (result) {
 		return result;
 	}
+	#endif
 
 	*entrypoint = eh.e_entry;
 

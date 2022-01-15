@@ -52,7 +52,7 @@ as_create(void) {
         return NULL;
     }
 
-    as->page_table = kmalloc(sizeof(pt));
+    as->page_table = pt_create();
     if (as == NULL) {
         kfree(as);
         return NULL;
@@ -61,6 +61,7 @@ as_create(void) {
     /*
      * Initialize as needed.
      */
+    as->index = 0;
     return as;
 }
 
@@ -147,30 +148,22 @@ void as_deactivate(void) {
  * want to implement them.
  */
 int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
-                     int readable, int writeable, int executable
+                     int readable, int writable, int executable
                      ) {
 
 #if OPT_PROJECT
-    as->index = 0;               // sposta in struct addrspace (no static)
-    if(index > N_SEGMENTS)
-        {
-            panic("Too many regions!\n");
-            return ENOSYS;
-        }
+    if (as->index > N_SEGMENTS) {
+        panic("Too many regions!\n");
+        return ENOSYS;
+    }
 
-    as->segments[index].p_vaddr = vaddr;
-    as->segments[index].p_memsz = memsize;
-    as->segments[index].readable = readable;
-    as->segments[index].writable = writeable;
-    as->segments[index].executable = executable;
+    (as->segments[as->index]).p_vaddr = vaddr;
+    (as->segments[as->index]).p_memsz = memsize;
+    (as->segments[as->index]).readable = readable || 0;
+    (as->segments[as->index]).writable = writable || 0;
+    (as->segments[as->index]).executable = executable || 0;
 
     
-
-
-
-    
-
-    as->index++;
 
     return 0;
 #endif
@@ -212,13 +205,13 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 
 #if OPT_PROJECT
 int load_page(struct addrspace *as, vaddr_t vaddr) {
-    int i=0;
+    int i = 0, err = 0;
+    unsigned int first_offset = 0, f_size, m_size;
 
-    for(i=0; i<N_SEGMENTS ; i++){
-         if ( vaddr > as->segments[i].p_vaddr && vaddr < as->segments[i].p_memsz)
+    for (i = 0; i < N_SEGMENTS; i++) {
+        if (vaddr > as->segments[i].p_vaddr && vaddr < as->segments[i].p_memsz)
             break;
     }
-
 
     vaddr = vaddr & PAGE_FRAME;
 
@@ -227,7 +220,7 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
     
         
     //  quanta memoria scrivere (al più 4096)
-    int m_size = PAGE_SIZE - (~PAGE_FRAME & vaddr);
+    m_size = PAGE_SIZE - (~PAGE_FRAME & vaddr);
 
 
     // il limite del segmento appartiene alla pagina da caricare? 
@@ -237,21 +230,18 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
     
     // calcolo offset file
     
-    
-    int first_offset = as->segments[i].p_file_start + vaddr - as->segments[i].p_vaddr;
+    first_offset = as->segments[i].p_file_start + vaddr - as->segments[i].p_vaddr;
     
     if ( first_offset >= as->segments[i].p_file_end )
         return 0;
 
-
     // calcolo quantità da leggere da file
-    int f_size = (m_size > as->segments[i].p_file_end - first_offset) ? as->segments[i].p_file_end - first_offset : m_size;
+    f_size = (m_size > as->segments[i].p_file_end - first_offset) ? as->segments[i].p_file_end - first_offset : m_size;
 
-
-    int res = load_segment(as, as->file, as->segments[i].p_file_start, vaddr, m_size, f_size, as->segments[i].executable);
+    err = load_segment(as, as->file, as->segments[i].p_file_start, vaddr, m_size, f_size, as->segments[i].executable);
     
-    if(res)
-        return res;    
+    if(err)
+        return err;    
     
     return 0;
 

@@ -170,15 +170,21 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     as = proc_getas();
-
+    
+    if (as == NULL) {
+        /*
+         * No address space set up. This is probably also a
+         * kernel fault early in boot.
+         */
+        return EFAULT;
+    }
     int e_fault = 1;
     
     for(i=0; i<N_SEGMENTS && e_fault; i++){
-         if ( faultaddress >  as->segments[i].p_vaddr && faultaddress < as->segments[i].p_memsz){
+        if (faultaddress > as->segments[i].p_vaddr && faultaddress < as->segments[i].p_vaddr + as->segments[i].p_memsz) {
             e_fault = 0;
             read_only = !(as->segments[i].writable);
-         }
-
+        }
     }
 
     if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS )     // outside stack
@@ -187,14 +193,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     
 
     DEBUG(DB_VM, "dumbvm: fault: 0x%x\n", faultaddress);
-
-    if (as == NULL) {
-        /*
-         * No address space set up. This is probably also a
-         * kernel fault early in boot.
-         */
-        return EFAULT;
-    }
 
     switch (faulttype) {
         case VM_FAULT_READONLY:

@@ -1,14 +1,10 @@
 #include <coremap.h>
 #include <pt.h>
-#include <lib.h>
-#include <machine/vm.h>
 #include <swapfile.h>
-
+#include <lib.h>
 #include <proc.h>
 #include <addrspace.h>
 #include <kern/errno.h>
-
-// TODO add spinlock
 
 #if 0
 vaddr_t get_victim(pt* table ) {
@@ -34,21 +30,37 @@ vaddr_t get_victim(pt* table ) {
     return victim;
 }
 #endif
+
+pt* pt_create(){
+    pt* ret;
+    ret = kmalloc(sizeof(pt));
+    if(ret == NULL)
+        return NULL;
+    ret->load_sem = sem_create("load_sem", 1);
+    if(ret->load_sem == NULL){
+        kfree(ret);
+        return NULL;
+    }
+    return ret;
+}
+
 void pt_destroy(pt* table){
     int i = 0;
-    if (table == NULL) return; 
-    for(;i < TABLE_SIZE; i++) {
+    if (table == NULL) return;
+    sem_destroy(table->load_sem);
+    for (; i < TABLE_SIZE; i++) {
         if (table->table[i] != NULL) {
             int j = 0;
             for(; j < TABLE_SIZE; j++) {
                 if (table->table[i][j].valid && !table->table[i][j].swp)
                     free_frame(table->table[i][j].frame_no << 12); // passo l'indirizzo fisico del frame in quanto la funzione si aspetta questo
-                /*else if (table->table[i][j].valid && table->table[i][j].swp)
-                    swap_get((vaddr_t) NULL, table->table[i][j].frame_no);*/
+                else if (table->table[i][j].valid && table->table[i][j].swp)
+                    swap_get((vaddr_t) NULL, table->table[i][j].frame_no);
             }
             kfree(table->table[i]); // dealloco i blocchi utilizzati per contenere e entry
         }
     }
+    kfree(table);
 }
 
 static int init_rows(pt* table, unsigned int index) {
@@ -67,33 +79,39 @@ static int init_rows(pt* table, unsigned int index) {
     return 0;
 }
 
-
-// rendi sinctronizzata "pt_get_frame_from_page" (spinlock, condition variable)
+static int load_from_file(pt* table, unsigned int exte, unsigned int inte, vaddr_t fault_addr) {
+    int err = 0;
+    table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte]) >> 12;
+    if (table->table[exte][inte].frame_no == 0)
+        return ENOMEM;
+    table->table[exte][inte].valid = true;
+    if (fault_addr < PROJECT_STACK_MIN_ADDRESS)     //l'indirizzo si trova al di fuori dello stack
+        err = load_page(proc_getas(), fault_addr); 
+    return err;
+}
 
 int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     unsigned int exte, inte;
     int err = 0;
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
-    
-    if(table->table[exte] == NULL)
+    P(table->load_sem);
+    //inizializzazione riga di secondo livello
+    if (table->table[exte] == NULL)
         err = init_rows(table, fault_addr);
-    if(err)
+    if (err) {
+        V(table->load_sem);
         return err;
-    if(table->table[exte][inte].valid == false ){
-        // carico il frame da file
-        table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte]) >> 12;
-        if( table->table[exte][inte].frame_no == 0 )
-            return ENOMEM; 
-        table->table[exte][inte].valid = true;
-        if (fault_addr < PROJECT_STACK_MIN_ADDRESS) // fuori dallo stack
-            err = load_page(proc_getas(), fault_addr); //table->table[exte][inte], passato come terzo parametro, ha senso? (dovrebbe essere già tutto in as*/
     }
 
-    if(err)
+    if(table->table[exte][inte].valid == false )
+        err = load_from_file(table, exte, inte, fault_addr);
+    // manca swap
+    if (err) {
+        V(table->load_sem);
         return err;
-
-    
+    }
+    V(table->load_sem);
     *frame = table->table[exte][inte].frame_no << 12;
     return 0;
 }

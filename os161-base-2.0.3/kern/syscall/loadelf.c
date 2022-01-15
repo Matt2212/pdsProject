@@ -568,15 +568,17 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 
 		result = as_define_region(as,
 					  ph.p_vaddr, ph.p_memsz,
-					  ph.p_flags & PF_R,
-					  ph.p_flags & PF_W,
+					  (ph.p_flags & PF_R),
+					  (ph.p_flags & PF_W),
 					  ph.p_flags & PF_X);
 		if (result) {
 			return result;
 		}
-		as->segments[i].p_file_end = ph.p_offset + ph.p_filesz;
-    	as->segments[i]->p_file_start = ph.p_offset;
-	}
+
+        (as->segments[as->index]).p_file_end = ph.p_offset + ph.p_filesz;
+        (as->segments[as->index]).p_file_start = ph.p_offset;
+        as->index++;
+        }
 
 	result = as_prepare_load(as);
 	if (result) {

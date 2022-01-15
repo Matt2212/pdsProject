@@ -58,9 +58,9 @@ struct segment {
     uint32_t p_file_start;    /* all'inizio rappresenta l'offset del segmento nel file offset, negli altri casi rappresenta il primo byte da leggere nell'eseguibile */
     uint32_t p_file_end;  /* byte successivo all'ultimo byte del segmento nel file eseguibile */
     uint32_t p_memsz;     /* dimensione in byte del segmento in memoria */
-    uint8_t readable : 1; /* permessi */
-    uint8_t writable : 1;
-    uint8_t executable : 1;
+    uint32_t readable : 1; /* permessi */
+    uint32_t writable : 1;
+    uint32_t executable : 1;
 };
 #endif
 struct addrspace {

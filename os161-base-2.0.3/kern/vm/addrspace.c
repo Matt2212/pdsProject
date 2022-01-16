@@ -173,8 +173,7 @@ int as_prepare_load(struct addrspace *as) {
     /*
      * Write this.
      */
-
-    (void)as;
+    as->ignore_permissions = 1;
     return 0;
 }
 
@@ -183,7 +182,7 @@ int as_complete_load(struct addrspace *as) {
      * Write this.
      */
 
-    (void)as;
+    as->ignore_permissions = 0;
     return 0;
 }
 
@@ -193,7 +192,6 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
      */
 
 #if OPT_PROJECT
-    // metti init_rows in un if (per ora torna void)
     
                  /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
     (void) as;
@@ -207,9 +205,8 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
 int load_page(struct addrspace *as, vaddr_t vaddr) {
     int i = 0, err = 0;
     unsigned int first_offset = 0, f_size, m_size;
-
     for (i = 0; i < N_SEGMENTS; i++) {
-        if (vaddr > as->segments[i].p_vaddr && vaddr < as->segments[i].p_memsz)
+        if (vaddr >= as->segments[i].p_vaddr && vaddr < as->segments[i].p_vaddr + as->segments[i].p_memsz)
             break;
     }
 
@@ -237,13 +234,13 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
 
     // calcolo quantità da leggere da file
     f_size = (m_size > as->segments[i].p_file_end - first_offset) ? as->segments[i].p_file_end - first_offset : m_size;
-
-    err = load_segment(as, as->file, as->segments[i].p_file_start, vaddr, m_size, f_size, as->segments[i].executable);
     
+    as_prepare_load(as);
+    err = load_segment(as, as->file, as->segments[i].p_file_start, vaddr, m_size, f_size, as->segments[i].executable);
+    as_complete_load(as);
     if(err)
         return err;    
     
     return 0;
-
 }
 #endif

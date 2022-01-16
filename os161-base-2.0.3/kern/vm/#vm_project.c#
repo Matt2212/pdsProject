@@ -190,7 +190,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
             break;
         default:
             return EINVAL;
-    }
+    }db
 
     // mettilo dentro a un IF
     
@@ -210,6 +210,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
         tlb_read(&ehi, &elo, i);
         if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr) ){ // l'entry è già stata scritta
             if (read_only) {
+                ehi = faultaddress;
                 elo = paddr | TLBLO_VALID;
                 tlb_write(ehi, elo, i);
             }

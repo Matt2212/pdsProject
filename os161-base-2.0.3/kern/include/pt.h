@@ -23,8 +23,8 @@ typedef struct
 
 typedef struct
 {
-    pt_entry *table[TABLE_SIZE]; // allocala dinamicamente
-    struct semaphore* load_sem;
+    pt_entry **table; // allocala dinamicamente
+    struct spinlock load_lock;
 
     //spinlock per l'intera table o non serve?
 } pt;

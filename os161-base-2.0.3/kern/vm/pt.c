@@ -36,18 +36,19 @@ pt* pt_create(){
     ret = kmalloc(sizeof(pt));
     if(ret == NULL)
         return NULL;
-    ret->load_sem = sem_create("load_sem", 1);
-    if(ret->load_sem == NULL){
+    ret->table = kmalloc(sizeof(pt_entry*) * TABLE_SIZE);
+    if (ret->table == NULL){
         kfree(ret);
         return NULL;
     }
+    spinlock_init(&ret->load_lock);
     return ret;
 }
 
 void pt_destroy(pt* table){
     int i = 0;
     if (table == NULL) return;
-    sem_destroy(table->load_sem);
+    spinlock_cleanup(&table->load_lock);
     for (; i < TABLE_SIZE; i++) {
         if (table->table[i] != NULL) {
             int j = 0;
@@ -60,6 +61,7 @@ void pt_destroy(pt* table){
             kfree(table->table[i]); // dealloco i blocchi utilizzati per contenere e entry
         }
     }
+    kfree(table->table);
     kfree(table);
 }
 
@@ -95,23 +97,29 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     int err = 0;
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
-    P(table->load_sem);
-    //inizializzazione riga di secondo livello
+
+    //se holdo il lock goto end
+
+
+    // spinlock_acquire(&table->load_lock);
+    // inizializzazione riga di secondo livello
     if (table->table[exte] == NULL)
         err = init_rows(table, fault_addr);
     if (err) {
-        V(table->load_sem);
+        //spinlock_release(&table->load_lock);
         return err;
     }
-
-    if(table->table[exte][inte].valid == false )
+    
+    if (table->table[exte][inte].valid == false)
         err = load_from_file(table, exte, inte, fault_addr);
-    // manca swap
+    // else if (table->table[exte][inte].swp) // swap
     if (err) {
-        V(table->load_sem);
+        //spinlock_release(&table->load_lock);
         return err;
     }
-    V(table->load_sem);
+    //spinlock_release(&table->load_lock);
+
+// goto end
     *frame = table->table[exte][inte].frame_no << 12;
     return 0;
 }

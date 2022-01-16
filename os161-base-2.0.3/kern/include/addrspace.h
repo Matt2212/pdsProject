@@ -75,7 +75,10 @@ struct addrspace {
 #elif OPT_PROJECT
 
     struct segment segments[N_SEGMENTS]; /* tabella dei segmenti */
-    int index;
+    union {
+        int index;
+        int ignore_permissions;
+    };
 
     struct vnode *file;
 

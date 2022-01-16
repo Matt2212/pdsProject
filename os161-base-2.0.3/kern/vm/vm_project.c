@@ -191,10 +191,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
         default:
             return EINVAL;
     }
-
-    // mettilo dentro a un IF
     
-    int err = pt_get_frame_from_page(proc_getas()->page_table, faultaddress, &paddr);
+    int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
     if(err != 0)
         return err;
     

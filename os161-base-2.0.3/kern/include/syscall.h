@@ -30,7 +30,7 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
-
+#include "opt-project.h"
 #include <cdefs.h> /* for __DEAD */
 struct trapframe; /* from <machine/trapframe.h> */
 
@@ -58,5 +58,11 @@ __DEAD void enter_new_process(int argc, userptr_t argv, userptr_t env,
 
 int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
+
+#if OPT_PROJECT
+int sys_write(int fd, userptr_t buf_ptr, size_t size);
+int sys_read(int fd, userptr_t buf_ptr, size_t size);
+void sys__exit(int status);
+#endif
 
 #endif /* _SYSCALL_H_ */

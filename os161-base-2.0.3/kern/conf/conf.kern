@@ -451,3 +451,5 @@ optfile     project vm/vm_tlb.c
 optfile     project vm/coremap.c
 optofffile  project arch/mips/vm/dumbvm.c
 optfile     project vm/vm_project.c
+optfile     project syscall/file_syscalls.c
+optfile     project syscall/proc_syscalls.c

@@ -42,10 +42,11 @@
 
 
 /* Flags word for DEBUG() macro. */
-uint32_t dbflags = 0;
+uint32_t dbflags = (DB_EXEC | DB_VM) & 0;
 
 /* Lock for non-polled kprintfs */
-static struct lock *kprintf_lock;
+static struct lock *
+    kprintf_lock;
 
 /* Lock for polled kprintfs */
 static struct spinlock kprintf_spinlock;

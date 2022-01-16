@@ -108,7 +108,7 @@ syscall(struct trapframe *tf)
 		err = sys___time((userptr_t)tf->tf_a0,
 				 (userptr_t)tf->tf_a1);
 		break;
-#if OPT_PROJECT
+#if OPT_PAGING
                 err = 0;
             case SYS_write:
                 retval = sys_write((int)tf->tf_a0,

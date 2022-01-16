@@ -29,13 +29,15 @@
 
 #include <types.h>
 #include <kern/errno.h>
-#include <addrspace.h>
 #include <lib.h>
-#include <proc.h>
+#include <addrspace.h>
 #include <vm.h>
-#if OPT_PROJECT
+#include <proc.h>
+
+#if OPT_PAGING
 #include <spl.h>
 #include <mips/tlb.h>
+#include <vfs.h>
 #endif
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -51,7 +53,7 @@ as_create(void) {
     if (as == NULL) {
         return NULL;
     }
-
+#if OPT_PAGING
     as->page_table = pt_create();
     if (as == NULL) {
         kfree(as);
@@ -62,6 +64,7 @@ as_create(void) {
      * Initialize as needed.
      */
     as->index = 0;
+#endif
     return as;
 }
 
@@ -87,14 +90,15 @@ void as_destroy(struct addrspace *as) {
     /*
      * Clean up as needed.
      */
-#if OPT_PROJECT
+#if OPT_PAGING
     pt_destroy(as->page_table);
+    vfs_close(as->file);
 #endif
     kfree(as);
 }
 
 void as_activate(void) {
-#if OPT_PROJECT
+#if OPT_PAGING
     int i, spl;
     struct addrspace *as;
 
@@ -151,7 +155,7 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
                      int readable, int writable, int executable
                      ) {
 
-#if OPT_PROJECT
+#if OPT_PAGING
     if (as->index > N_SEGMENTS) {
         panic("Too many regions!\n");
         return ENOSYS;
@@ -166,6 +170,18 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
     
 
     return 0;
+#else
+    /*
+	 * Write this.
+	 */
+
+	(void)as;
+	(void)vaddr;
+	(void)memsize;
+	(void)readable;
+	(void)writeable;
+	(void)executable;
+	return ENOSYS;
 #endif
 }
 
@@ -173,7 +189,11 @@ int as_prepare_load(struct addrspace *as) {
     /*
      * Write this.
      */
+#if OPT_PAGING
     as->ignore_permissions = 1;
+#else
+    (void)as;
+#endif
     return 0;
 }
 
@@ -182,7 +202,11 @@ int as_complete_load(struct addrspace *as) {
      * Write this.
      */
 
+#if OPT_PAGING
     as->ignore_permissions = 0;
+#else
+    (void)as;
+#endif
     return 0;
 }
 
@@ -191,17 +215,15 @@ int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
      * Write this.
      */
 
-#if OPT_PROJECT
-    
-                 /* vedi se farlo fare direttamente alla risoluzione dell'indirizzo */
-    (void) as;
+    (void)as;
+
     /* Initial user-level stack pointer */
     *stackptr = USERSTACK;
-#endif
+
     return 0;
 }
 
-#if OPT_PROJECT
+#if OPT_PAGING
 int load_page(struct addrspace *as, vaddr_t vaddr) {
     int i = 0, err = 0;
     unsigned int first_offset = 0, f_size, m_size;

@@ -1,5 +1,3 @@
-#include <opt-project.h>
-#if !OPT_PROJECT
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -427,4 +425,3 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 	*ret = new;
 	return 0;
 }
-#endif

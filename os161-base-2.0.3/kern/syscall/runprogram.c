@@ -45,7 +45,6 @@
 #include <syscall.h>
 #include <test.h>
 
-#include <opt-project.h>
 /*
  * Load program "progname" and start running it in usermode.
  * Does not return except on error.
@@ -87,7 +86,7 @@ runprogram(char *progname)
 		vfs_close(v);
 		return result;
 	}
-#if !OPT_PROJECT
+#if !OPT_PAGING
 	/* Done with the file now. */
 	vfs_close(v);
 #endif

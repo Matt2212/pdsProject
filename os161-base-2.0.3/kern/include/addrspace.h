@@ -34,11 +34,12 @@
  * Address space structure and operations.
  */
 
+
 #include <vm.h>
 
 #include "opt-dumbvm.h"
-#include "opt-project.h"
-#if OPT_PROJECT
+#include "opt-paging.h"
+#if OPT_PAGING
 #include <pt.h>
 #define N_SEGMENTS 2
 #define PROJECT_STACK_MIN_ADDRESS USERSTACK-(18 * PAGE_SIZE)
@@ -46,13 +47,15 @@
 
 struct vnode;
 
+
 /*
  * Address space - data structure associated with the virtual memory
  * space of a process.
  *
  * You write this.
  */
-#if OPT_PROJECT 
+
+#if OPT_PAGING 
 struct segment {
     uint32_t p_vaddr;     /* indirizzo base del segmento */
     uint32_t p_file_start;    /* all'inizio rappresenta l'offset del segmento nel file offset, negli altri casi rappresenta il primo byte da leggere nell'eseguibile */
@@ -72,7 +75,7 @@ struct addrspace {
     paddr_t as_pbase2;
     size_t as_npages2;
     paddr_t as_stackpbase;
-#elif OPT_PROJECT
+#elif OPT_PAGING
 
     struct segment segments[N_SEGMENTS]; /* tabella dei segmenti */
     union {
@@ -168,7 +171,7 @@ int as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
 
-#if OPT_PROJECT
+#if OPT_PAGING
 
 int
 load_page(struct addrspace *as, vaddr_t vaddr);

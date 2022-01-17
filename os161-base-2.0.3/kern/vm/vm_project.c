@@ -135,7 +135,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     struct addrspace *as;
 
     if( faultaddress == (vaddr_t) NULL && faultaddress >= (vaddr_t) MIPS_KSEG0){
-        kprintf(strerror(EFAULT));
         sys__exit(EFAULT);
     }
     
@@ -171,16 +170,15 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS ) {    // outside stack
-        kprintf(strerror(EFAULT));
         sys__exit(EFAULT);
     }
     
 
-    DEBUG(DB_VM, "dumbvm: fault: 0x%x\n", faultaddress);
+    DEBUG(DB_VM, "vm_project: fault: 0x%x\n", faultaddress);
 
     switch (faulttype) {
         case VM_FAULT_READONLY:
-            kprintf("Attempt to write into a read-only memory region: %s", strerror(EFAULT));
+            DEBUG(DB_VM,"Attempt to write into a read-only memory region: 0x%x\n", faultaddress);
             sys__exit(EFAULT);
         case VM_FAULT_READ:
         case VM_FAULT_WRITE:
@@ -191,7 +189,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     
     int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
     if (err != 0) { 
-        kprintf("\n%s\n",strerror(ENOMEM));
         sys__exit(ENOMEM);
     }
     faultaddress &= PAGE_FRAME;

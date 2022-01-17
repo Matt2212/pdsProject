@@ -108,7 +108,9 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
         return 0;
     } else if (!found) {
         i = get_victim();
-        //swappa
+        //swappa, la return è provvisoria
+        lock_release(coremap_lock);
+        return 0;
     }
 
     page = i;

@@ -24,7 +24,9 @@ sys__exit(int status)
   /* get address space of current process and destroy */
   struct addrspace *as = proc_getas();
   as_destroy(as);
-  /* thread exits. proc data structure will be lost */
+
+  proc_setas(NULL);
+
   thread_exit();
 
   panic("thread_exit returned (should not happen)\n");

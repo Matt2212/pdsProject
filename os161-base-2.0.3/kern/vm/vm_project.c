@@ -42,6 +42,7 @@
 #include <vm_tlb.h>
 #include <vm.h>
 
+#include <syscall.h>
 #include <swapfile.h>
 /*
  * Dumb MIPS-only "VM system" that is intended to only be just barely
@@ -133,9 +134,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     uint8_t read_only = 0;
     struct addrspace *as;
 
-    if( faultaddress == (vaddr_t) NULL && faultaddress >= (vaddr_t) MIPS_KSEG0)
-        return EFAULT;
-
+    if( faultaddress == (vaddr_t) NULL && faultaddress >= (vaddr_t) MIPS_KSEG0){
+        kprintf(strerror(EFAULT));
+        sys__exit(EFAULT);
+    }
     
 
     if (curproc == NULL) {
@@ -166,22 +168,18 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
         }
     }
 
-    if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS )     // outside stack
-        return EFAULT;
-
+    if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS ) {    // outside stack
+        kprintf(strerror(EFAULT));
+        sys__exit(EFAULT);
+    }
     
 
     DEBUG(DB_VM, "dumbvm: fault: 0x%x\n", faultaddress);
 
     switch (faulttype) {
         case VM_FAULT_READONLY:
-            if (as->ignore_permissions) return 0;
-            // DA SISTEMARE
-            kprintf("permissions: %d", as->ignore_permissions);
-            as_destroy(as);
-            /* thread exits. proc data structure will be lost */
-            thread_exit();
-            panic("thread_exit returned (should not happen)\n");
+            kprintf("Attempt to write into a read-only memory region: %s", strerror(EFAULT));
+            sys__exit(EFAULT);
         case VM_FAULT_READ:
         case VM_FAULT_WRITE:
             break;
@@ -190,9 +188,10 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
     
     int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
-    if(err != 0)
-        return err;
-    
+    if (err != 0) { 
+        kprintf("\n%s\n",strerror(ENOMEM));
+        sys__exit(ENOMEM);
+    }
     faultaddress &= PAGE_FRAME;
 
     /* make sure it's page-aligned */

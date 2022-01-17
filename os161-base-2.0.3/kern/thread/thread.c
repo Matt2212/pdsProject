@@ -779,25 +779,32 @@ void
 thread_exit(void)
 {
 	struct thread *cur;
+#if OPT_PAGING
+    int threads;
+    struct proc *cur_proc;
+    cur_proc = curthread->t_proc;
+#endif
+    cur = curthread;
 
-	cur = curthread;
-
-	/*
+    /*
 	 * Detach from our process. You might need to move this action
 	 * around, depending on how your wait/exit works.
 	 */
 	proc_remthread(cur);
-
-	/* Make sure we *are* detached (move this only if you're sure!) */
-	KASSERT(cur->t_proc == NULL);
-
-	/* Check the stack guard band. */
-	thread_checkstack(cur);
-
-	/* Interrupts off on this processor */
-        splhigh();
-	thread_switch(S_ZOMBIE, NULL, NULL);
-	panic("braaaaaaaiiiiiiiiiiinssssss\n");
+#if OPT_PAGING
+    spinlock_acquire(&cur_proc->p_lock);
+    threads = cur_proc->p_numthreads;
+    spinlock_release(&cur_proc->p_lock);
+    if (threads == 0) proc_destroy(cur_proc);
+#endif
+    /* Make sure we *are* detached (move this only if you're sure!) */
+    KASSERT(cur->t_proc == NULL);
+    /* Check the stack guard band. */
+    thread_checkstack(cur);
+    /* Interrupts off on this processor */
+    splhigh();
+    thread_switch(S_ZOMBIE, NULL, NULL);
+    panic("braaaaaaaiiiiiiiiiiinssssss\n");
 }
 
 /*

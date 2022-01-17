@@ -374,7 +374,12 @@ main(int argc, char **argv)
 {
 	if (argc == 0 || argc == 1) {
 		/* no arguments */
-		ask();
+		//ask();
+		runop('-');
+		printf("\n-\n");
+		runop('f');
+		printf("\nf\n");
+		(void )ask;
 	}
 	else {
 		/* run the selected ops */

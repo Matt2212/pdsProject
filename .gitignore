@@ -6,3 +6,4 @@ os161-base-2.0.3/kern/.vscode
 .vscode/
 root/kernel*
 .idea/
+os161-base-2.0.3/build

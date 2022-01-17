@@ -134,7 +134,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     uint8_t read_only = 0;
     struct addrspace *as;
 
-    if( faultaddress == (vaddr_t) NULL && faultaddress >= (vaddr_t) MIPS_KSEG0){
+    if( faultaddress == (vaddr_t) NULL || faultaddress >= (vaddr_t) MIPS_KSEG0){
         sys__exit(EFAULT);
     }
     
@@ -178,7 +178,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     switch (faulttype) {
         case VM_FAULT_READONLY:
-            DEBUG(DB_VM,"Attempt to write into a read-only memory region: 0x%x\n", faultaddress);
+            kprintf("Attempt to write into a read-only memory region: 0x%x\n", faultaddress);
             sys__exit(EFAULT);
         case VM_FAULT_READ:
         case VM_FAULT_WRITE:
@@ -189,7 +189,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     
     int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
     if (err != 0) { 
-        sys__exit(ENOMEM);
+        sys__exit(err);
     }
     faultaddress &= PAGE_FRAME;
 
@@ -202,11 +202,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     for (i = 0; i < NUM_TLB; i++) {
         tlb_read(&ehi, &elo, i);
         if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr) ){ // l'entry è già stata scritta
-            if (read_only) {
-                elo = paddr | TLBLO_VALID;
-                tlb_write(ehi, elo, i);
-            }
-            goto end;
+            
+            goto write;
         }
         if (elo & TLBLO_VALID) {
             continue;
@@ -217,10 +214,13 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     i = tlb_get_rr_victim();
 write:
     ehi = faultaddress;
-    elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-    DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
+    if (read_only && !as->ignore_permissions)
+        elo = paddr | TLBLO_VALID;
+    else
+        elo = paddr | TLBLO_DIRTY | TLBLO_VALID; 
+    DEBUG(DB_VM, "vm_project: 0x%x -> 0x%x\n", faultaddress, paddr);
     tlb_write(ehi, elo, i);
-end:
+
     splx(spl);
     return 0;
 }

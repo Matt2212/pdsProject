@@ -120,7 +120,6 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
 
     if (residual && page + num < npages)
         coremap[page + num].nframes = residual;
-    KASSERT(coremap[page + num].nframes > 0);
     coremap[page].nframes = num;
 
     for (i = page; i < page + num; i++){
@@ -161,6 +160,7 @@ void free_frame(paddr_t addr) {
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
     lock_acquire(coremap_lock);
     mysize = coremap[page].nframes;
+    KASSERT(mysize>0);
 
     for (i = 0; i < mysize; i++) {
         coremap[page + i].occ = false;

@@ -2,7 +2,7 @@
 #include <types.h>
 #include <coremap.h>
 #include <lib.h>
-#include <spinlock.h>
+#include <synch.h>
 #include <vm.h>
 
 
@@ -13,7 +13,7 @@ struct cm_entry {
     pt_entry *pt_entry; // se null e fixed = 0 allora la pagina è in swap
 };
 
-static struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
+static struct lock* coremap_lock;
 static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
@@ -39,7 +39,13 @@ void coremap_create(unsigned int n_pages) {
 
 int coremap_bootstrap(paddr_t firstpaddr) {
     unsigned int i = 0;
-    if (!coremap) return false;
+    if (!coremap) 
+        return false;
+    coremap_lock = lock_create("coremap_lock");
+    if (!coremap_lock){
+        kfree(coremap);
+        return false;
+    }
     first_page = firstpaddr / PAGE_SIZE;  // firstpaddr è l'indirizzo fisico del primo frame libero
 
     KASSERT(npages > first_page);
@@ -89,7 +95,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
     paddr_t addr = 0;
     uint32_t i = first_page, residual, page;
     bool found = false;
-    spinlock_acquire(&coremap_lock);
+    lock_acquire(coremap_lock);
     while (i < npages && !found) {
         if (!coremap[i].occ && coremap[i].nframes >= num)
             found = true;
@@ -98,13 +104,11 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
     }
 
     if (!found && num != 1) {
-        spinlock_release(&coremap_lock);
+        lock_release(coremap_lock);
         return 0;
     } else if (!found) {
         i = get_victim();
-        spinlock_release(&coremap_lock);
-        // swappa se non c'e' spaazio ritorni null
-        spinlock_acquire(&coremap_lock);
+        //swappa
     }
 
     page = i;
@@ -123,7 +127,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
         coremap[i].pt_entry = entry;
     }
     addr = (paddr_t)(page * PAGE_SIZE);
-    spinlock_release(&coremap_lock);
+    lock_release(coremap_lock);
     return addr;
 #endif
 }
@@ -153,7 +157,7 @@ void free_frame(paddr_t addr) {
 #else
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
     bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
-    spinlock_acquire(&coremap_lock);
+    lock_acquire(coremap_lock);
     mysize = coremap[page].nframes;
 
     for (i = 0; i < mysize; i++) {
@@ -177,7 +181,7 @@ void free_frame(paddr_t addr) {
         i = next;
         next += coremap[next].nframes;
     }
-    spinlock_release(&coremap_lock);
+    lock_release(coremap_lock);
 #endif
 }
 // forse la kfree da problemi
@@ -185,6 +189,6 @@ void coremap_destroy() {
     npages = 0;
     kfree(coremap);
     coremap = NULL;
-    spinlock_cleanup(&coremap_lock);
+    lock_destroy(coremap_lock);
     first_page = 0;
 }

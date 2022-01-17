@@ -24,9 +24,8 @@ typedef struct
 typedef struct
 {
     pt_entry **table; // allocala dinamicamente
-    struct spinlock load_lock;
+    struct lock* pt_lock;
 
-    //spinlock per l'intera table o non serve?
 } pt;
 
 // fai i metodi thread safe

@@ -7,9 +7,10 @@
 #include <uio.h>
 #include <vfs.h>
 #include <vnode.h>
+#include <synch.h>
 #include <kern/errno.h>
 
-static struct spinlock swap_lock = SPINLOCK_INITIALIZER;
+static struct lock* swap_lock;
 static swap_file* swap;
 static bool init = false;
 
@@ -27,9 +28,16 @@ int swap_init() {
         panic("OUT OF MEMORY");
         return ENOMEM;
     }
-    spinlock_acquire(&swap_lock);
+    swap_lock = lock_create("swap_lock");
+    if (swap_lock == NULL) {
+        kfree(swap);
+        kfree(swap->bitmap);
+        panic("OUT OF MEMORY");
+        return ENOMEM;
+    }
+    lock_acquire(swap_lock);
     init = true;
-    spinlock_release(&swap_lock);
+    lock_release(swap_lock);
     vfs_open(name, O_CREAT | O_RDWR | O_TRUNC, 0664, &swap->file);
     return 0;
 }
@@ -38,16 +46,22 @@ int swap_init() {
 int swap_get(vaddr_t address, unsigned int index) {
     struct iovec iov;
 	struct uio ku;
-    spinlock_acquire(&swap_lock);
-    if (!init){
-        spinlock_release(&swap_lock);
-        return EPERM;
+        int err = 0;
+        lock_acquire(swap_lock);
+        if (!init) {
+            lock_release(swap_lock);
+            return EPERM;
     }
     bitmap_unmark(swap->bitmap, index);
-    spinlock_release(&swap_lock);
-    if ((void *)address == NULL) return ENOSPC;
+    
+    if ((void *)address == NULL) {
+        lock_release(swap_lock);
+        return ENOSPC;
+}
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_READ);
-    return VOP_READ(swap->file, &ku);
+    err = VOP_READ(swap->file, &ku);
+    lock_release(swap_lock);
+    return err;
 }
 
 // ritorna 0 se non ci sono stati errori
@@ -55,30 +69,32 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
     struct iovec iov;
 	struct uio ku;
     unsigned int index;
-    spinlock_acquire(&swap_lock);
+    int err = 0;
+    lock_acquire(swap_lock);
     if (!init) {
-        spinlock_release(&swap_lock);
+        lock_release(swap_lock);
         return EPERM;
     }
     if (bitmap_alloc(swap->bitmap, &index) == ENOSPC){
-        spinlock_release(&swap_lock);
+        lock_release(swap_lock);
         panic("Out of swap space");
         return ENOSPC;
     }
 
-    spinlock_release(&swap_lock);
+    
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);
-    VOP_WRITE(swap->file, &ku);
+    err = VOP_WRITE(swap->file, &ku);
     *ret_index = index;
-    return 0;
+    lock_release(swap_lock);
+    return err;
 }
 
 void swap_close() {
-    spinlock_acquire(&swap_lock);
+    lock_acquire(swap_lock);
     bitmap_destroy(swap->bitmap);
     init = false;
-    spinlock_release(&swap_lock);
-    spinlock_cleanup(&swap_lock);
+    lock_release(swap_lock);
+    lock_destroy(swap_lock);
     vfs_close(swap->file);
     kfree(swap);
     swap = NULL;

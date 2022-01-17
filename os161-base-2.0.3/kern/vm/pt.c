@@ -41,14 +41,19 @@ pt* pt_create(){
         kfree(ret);
         return NULL;
     }
-    spinlock_init(&ret->load_lock);
+    ret->pt_lock = lock_create("pt_lock");
+    if (ret->pt_lock == NULL) {
+        kfree(ret->table);
+        kfree(ret);
+        return NULL;
+    }
     return ret;
 }
 
 void pt_destroy(pt* table){
     int i = 0;
     if (table == NULL) return;
-    spinlock_cleanup(&table->load_lock);
+    lock_destroy(table->pt_lock);
     for (; i < TABLE_SIZE; i++) {
         if (table->table[i] != NULL) {
             int j = 0;

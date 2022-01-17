@@ -77,6 +77,7 @@ void vm_bootstrap(void) {
     spinlock_acquire(&vm_lock);
     if (!coremap_bootstrap(ram_getfirstfree())) {
         panic("No space left on the device to allocate the coremap table");
+        return;
     }
     init = true;
     spinlock_release(&vm_lock);
@@ -86,13 +87,12 @@ void vm_bootstrap(void) {
 static paddr_t
 getppages(unsigned long npages) {
     paddr_t addr;
-    spinlock_acquire(&vm_lock);
     if (!init) { // dovremmo essere al bootstrap quindi possiamo allocare in maniera contigua
+        spinlock_acquire(&vm_lock);
         addr = ram_stealmem(npages);
         spinlock_release(&vm_lock);
     }
     else {
-        spinlock_release(&vm_lock);
         addr = get_kernel_frame(npages);
     }
     return addr;
@@ -112,12 +112,9 @@ alloc_kpages(unsigned npages) {
 
 void free_kpages(vaddr_t addr) {
     if (addr == 0) return;
-    spinlock_acquire(&vm_lock);
     if (!init) {
-        spinlock_release(&vm_lock);
         return;
     }
-    spinlock_release(&vm_lock);
     free_frame((paddr_t)addr - MIPS_KSEG0);
 }
 

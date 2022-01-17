@@ -156,6 +156,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
          * No address space set up. This is probably also a
          * kernel fault early in boot.
          */
+        thread_exit();
+        panic("thread_exit returned (should not happen)\n");
         return EFAULT;
     }
     int e_fault = 1;

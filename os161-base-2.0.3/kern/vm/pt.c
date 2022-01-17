@@ -103,15 +103,21 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
 
-    //se holdo il lock goto end
+    //se posseggo il lock significa che sto effettuando o una load o una swap-in, quindi l'entry nella page_table esiste già, quindi goto end
 
+    if(lock_do_i_hold(table->pt_lock)){
+        KASSERT(table->table[exte] != NULL);
+        KASSERT(table->table[exte][inte].valid);
+        KASSERT(table->table[exte][inte].frame_no != 0);
+        goto end;
+    }
 
-    // spinlock_acquire(&table->load_lock);
+    lock_acquire(table->pt_lock);
     // inizializzazione riga di secondo livello
     if (table->table[exte] == NULL)
         err = init_rows(table, fault_addr);
     if (err) {
-        //spinlock_release(&table->load_lock);
+        lock_release(table->pt_lock);
         return err;
     }
     
@@ -119,12 +125,12 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
         err = load_from_file(table, exte, inte, fault_addr);
     // else if (table->table[exte][inte].swp) // swap
     if (err) {
-        //spinlock_release(&table->load_lock);
+        lock_release(table->pt_lock);
         return err;
     }
-    //spinlock_release(&table->load_lock);
+    lock_release(table->pt_lock);
 
-// goto end
+end:
     *frame = table->table[exte][inte].frame_no << 12;
     return 0;
 }

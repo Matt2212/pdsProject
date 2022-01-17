@@ -129,8 +129,9 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
         coremap[i].pt_entry = entry;
     }
     addr = (paddr_t)(page * PAGE_SIZE);
+    bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
     lock_release(coremap_lock);
-    return addr;
+    return addr;    
 #endif
 }
 
@@ -158,7 +159,6 @@ void free_frame(paddr_t addr) {
     return;
 #else
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
-    bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
     lock_acquire(coremap_lock);
     mysize = coremap[page].nframes;
 

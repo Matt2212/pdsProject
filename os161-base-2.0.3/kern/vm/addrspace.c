@@ -234,6 +234,7 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
 
     vaddr = vaddr & PAGE_FRAME;
 
+
     if( vaddr < as->segments[i].p_vaddr )  // se l'inizio di pagina non appartiene al segmento
         vaddr = as->segments[i].p_vaddr;
     
@@ -248,8 +249,8 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
    
     
     // calcolo offset file
-    
-    first_offset = as->segments[i].p_file_start + vaddr - as->segments[i].p_vaddr;
+
+    first_offset = as->segments[i].p_file_start + (vaddr - as->segments[i].p_vaddr);
     
     if ( first_offset >= as->segments[i].p_file_end )
         return 0;
@@ -258,7 +259,7 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
     f_size = (m_size > as->segments[i].p_file_end - first_offset) ? as->segments[i].p_file_end - first_offset : m_size;
     
     as_prepare_load(as);
-    err = load_segment(as, as->file, as->segments[i].p_file_start, vaddr, m_size, f_size, as->segments[i].executable);
+    err = load_segment(as, as->file, first_offset, vaddr, m_size, f_size, as->segments[i].executable);
     as_complete_load(as);
     if(err)
         return err;    

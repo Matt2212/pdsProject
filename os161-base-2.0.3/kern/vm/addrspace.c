@@ -91,6 +91,8 @@ void as_destroy(struct addrspace *as) {
      * Clean up as needed.
      */
 #if OPT_PAGING
+    if (as == NULL)
+         return;
     pt_destroy(as->page_table);
     vfs_close(as->file);
 #endif

@@ -30,8 +30,8 @@ int swap_init() {
     }
     swap_lock = lock_create("swap_lock");
     if (swap_lock == NULL) {
+        bitmap_destroy(swap->bitmap);
         kfree(swap);
-        kfree(swap->bitmap);
         panic("OUT OF MEMORY");
         return ENOMEM;
     }
@@ -53,7 +53,7 @@ int swap_get(vaddr_t address, unsigned int index) {
             return EPERM;
     }
     bitmap_unmark(swap->bitmap, index);
-    
+    //se address è null significa che voglio liberare la pagina dello swap
     if ((void *)address == NULL) {
         lock_release(swap_lock);
         return ENOSPC;

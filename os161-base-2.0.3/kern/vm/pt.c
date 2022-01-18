@@ -61,7 +61,7 @@ void pt_destroy(pt* table){
                 if (table->table[i][j].valid && !table->table[i][j].swp)
                     free_frame(table->table[i][j].frame_no << 12); // passo l'indirizzo fisico del frame in quanto la funzione si aspetta questo
                 else if (table->table[i][j].valid && table->table[i][j].swp)
-                    swap_get((vaddr_t) NULL, table->table[i][j].frame_no);
+                    swap_get((vaddr_t) NULL, table->table[i][j].frame_no); // libera lo swap
             }
             kfree(table->table[i]); // dealloco i blocchi utilizzati per contenere e entry
         }
@@ -88,7 +88,7 @@ static int init_rows(pt* table, unsigned int index) {
 
 static int load_from_file(pt* table, unsigned int exte, unsigned int inte, vaddr_t fault_addr) {
     int err = 0;
-    table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte]) >> 12;
+    table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte],table->pt_lock) >> 12;
     if (table->table[exte][inte].frame_no == 0)
         return ENOMEM;
     table->table[exte][inte].valid = true;
@@ -125,7 +125,8 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     
     if (table->table[exte][inte].valid == false)
         err = load_from_file(table, exte, inte, fault_addr);
-    // else if (table->table[exte][inte].swp) // swap
+    else if (table->table[exte][inte].swp)           // swap
+        err = load_from_swap(&table->table[exte][inte], table->pt_lock);
     if (err) {
         lock_release(table->pt_lock);
         return err;

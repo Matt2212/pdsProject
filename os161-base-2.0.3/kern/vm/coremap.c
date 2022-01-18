@@ -4,6 +4,7 @@
 #include <lib.h>
 #include <synch.h>
 #include <vm.h>
+#include <swapfile.h>
 
 
 struct cm_entry {
@@ -11,6 +12,7 @@ struct cm_entry {
     uint32_t fixed : 1;
     uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
     pt_entry *pt_entry; // se null e fixed = 0 allora la pagina è in swap
+    struct lock *pt_lock;
 };
 
 static struct lock* coremap_lock;
@@ -68,30 +70,8 @@ int coremap_bootstrap(paddr_t firstpaddr) {
     return true;
 }
 
-static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) { 
-    #if 0
-    unsigned int i, j, count = 0;
-    if (num > MAX_CONT_PAGES || num == 0) return 0;
-    spinlock_acquire(&free_list_lock);
-    for (i = first_page; i < npages; i++) {
-        if (!coremap[i].occ)
-            count++;
-        else
-            count = 0;
-        if (count == num) {
-            for (j = 0; j < num; j++) {
-                coremap[i - j].occ = true;
-                coremap[i - j].fixed = true;
-            }
-            coremap[i - j + 1].nframes = num;
-            spinlock_release(&free_list_lock);
-            return (i - j + 1) * PAGE_SIZE;
-        }
-    }
+static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struct lock* lock) {
     
-    spinlock_release(&free_list_lock);
-    return 0;
-#else
     paddr_t addr = 0;
     uint32_t i = first_page, residual, page;
     bool found = false;
@@ -107,18 +87,49 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
         lock_release(coremap_lock);
         return 0;
     } else if (!found) {
+        int err = 0;
+        unsigned int swp_index;
         i = get_victim();
         if((int)i == -1){
             lock_release(coremap_lock);
             return 0;
         }
-        // swappa, la return e la coremap unlock sono provvisorie
 
-        lock_release(coremap_lock);
-        return 0;
+        // gestisti la TLB in caso di swap out (invalidation??)
+        // (MULTICORE PROB)
+
+    
+
+        // swappa
+        if(!lock_do_i_hold(coremap[i].pt_lock)) { //se il frame non e' mappato nella page_table del thread che sta eseguendo il codice
+            // devo settare l'entry come in swap, quindi devo acquisire il lock della pt che possiede la entry
+            lock_acquire(coremap[i].pt_lock);
+            err = swap_set(PADDR_TO_KVADDR(i * PAGE_SIZE), &swp_index);
+            if(!err){
+                coremap[i].pt_entry->swp = true;
+                coremap[i].pt_entry->frame_no = swp_index;
+            }
+            lock_release(coremap[i].pt_lock);
+        } else {
+            // eseguo lo swap-out
+            err = swap_set(PADDR_TO_KVADDR(i * PAGE_SIZE), &swp_index);
+            if(!err){
+                coremap[i].pt_entry->swp = true;
+                coremap[i].pt_entry->frame_no = swp_index;
+            }
+        }
+        
+        if(err) {
+            kprintf("%s", strerror(err));
+            lock_release(coremap_lock);
+            return 0;
+        }
     }
 
     page = i;
+    
+
+
     // page adesso conterrà il primo frame libero
     // aggiorno la tabella
     residual = coremap[page].nframes - num;
@@ -127,24 +138,26 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry) {
         coremap[page + num].nframes = residual;
     coremap[page].nframes = num;
 
+
     for (i = page; i < page + num; i++){
         coremap[i].occ = true;
         coremap[i].fixed = fixed;
         coremap[i].pt_entry = entry;
+        coremap[i].pt_lock = lock;
     }
     addr = (paddr_t)(page * PAGE_SIZE);
     bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
     lock_release(coremap_lock);
     return addr;    
-#endif
+
 }
 
-paddr_t get_swappable_frame(pt_entry* entry) {
-    return get_n_frames(1, false, entry);
+paddr_t get_swappable_frame(pt_entry* entry, struct lock* lock) {
+    return get_n_frames(1, false, entry, lock);
 }
 
 paddr_t get_kernel_frame(unsigned int num) {
-    return get_n_frames(num, true, NULL);
+    return get_n_frames(num, true, NULL, NULL);
 }
 
 void free_frame(paddr_t addr) {

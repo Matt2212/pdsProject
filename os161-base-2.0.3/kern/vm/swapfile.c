@@ -9,6 +9,7 @@
 #include <vnode.h>
 #include <synch.h>
 #include <kern/errno.h>
+#include <coremap.h>
 
 static struct lock* swap_lock;
 static swap_file* swap;
@@ -46,21 +47,40 @@ int swap_init() {
 int swap_get(vaddr_t address, unsigned int index) {
     struct iovec iov;
 	struct uio ku;
-        int err = 0;
+    int err = 0;
+    
+    bool lock_hold = lock_do_i_hold(swap_lock);
+    if(!lock_hold){
         lock_acquire(swap_lock);
         if (!init) {
             lock_release(swap_lock);
             return EPERM;
+        }
+        bitmap_unmark(swap->bitmap, index);
+        //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in
+        if ((void *)address == NULL) {
+            lock_release(swap_lock);
+            return ENOSPC;
+        }
     }
-    bitmap_unmark(swap->bitmap, index);
-    //se address è null significa che voglio liberare la pagina dello swap
-    if ((void *)address == NULL) {
-        lock_release(swap_lock);
-        return ENOSPC;
-}
+    else {
+        if (!init) {
+            return EPERM;
+        }
+        bitmap_unmark(swap->bitmap, index);
+        //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in
+        if ((void *)address == NULL) {
+            return ENOSPC;
+        }
+    }
+
+
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_READ);
     err = VOP_READ(swap->file, &ku);
-    lock_release(swap_lock);
+
+    if(!lock_hold)
+        lock_release(swap_lock);
+    
     return err;
 }
 
@@ -70,22 +90,39 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
 	struct uio ku;
     unsigned int index;
     int err = 0;
-    lock_acquire(swap_lock);
-    if (!init) {
-        lock_release(swap_lock);
-        return EPERM;
+    
+    bool lock_hold = lock_do_i_hold(swap_lock);
+    if(!lock_hold){
+        lock_acquire(swap_lock);
+        if (!init) {
+            lock_release(swap_lock);
+            return EPERM;
+        }
+        if (bitmap_alloc(swap->bitmap, &index) == ENOSPC){
+            lock_release(swap_lock);
+            panic("Out of swap space");
+            return ENOSPC;
+        }
     }
-    if (bitmap_alloc(swap->bitmap, &index) == ENOSPC){
-        lock_release(swap_lock);
-        panic("Out of swap space");
-        return ENOSPC;
+    else {
+        if (!init) {
+            return EPERM;
+        }
+        if (bitmap_alloc(swap->bitmap, &index) == ENOSPC){
+            panic("Out of swap space");
+            return ENOSPC;
+        }
     }
+
+    // FORSE MULTICORE
+    //tlb_invalidation((paddr_t) (address - KSEG0));
 
     
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);
     err = VOP_WRITE(swap->file, &ku);
     *ret_index = index;
-    lock_release(swap_lock);
+    if(!lock_hold)
+        lock_release(swap_lock); //magari rilascialo prima della scrittura
     return err;
 }
 
@@ -98,4 +135,34 @@ void swap_close() {
     vfs_close(swap->file);
     kfree(swap);
     swap = NULL;
+}
+
+
+int load_from_swap(pt_entry* entry, struct lock* pt_lock){
+
+    int err;
+    paddr_t frame;    
+    
+
+    KASSERT(entry->swp);
+
+    lock_acquire(swap_lock);
+
+    frame = get_swappable_frame(entry, pt_lock);
+    if(frame == 0){
+        lock_release(swap_lock);
+        return ENOMEM;
+    }
+
+
+    err = swap_get(PADDR_TO_KVADDR(frame), entry->frame_no);
+     
+    if(!err){
+        entry->frame_no = frame >> 12;
+        entry->swp = false;
+    }
+
+    lock_release(swap_lock);
+
+    return err;
 }

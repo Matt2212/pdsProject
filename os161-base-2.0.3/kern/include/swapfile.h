@@ -4,6 +4,8 @@
 #include <bitmap.h>
 #include <vm.h>
 
+#include <pt.h>
+
 #define SWAP_MAX 9 * 1024 * 1024 / PAGE_SIZE
 
 typedef struct {
@@ -29,5 +31,7 @@ int swap_init(void);
 int swap_get(vaddr_t address, unsigned int index);
 int swap_set(vaddr_t address, unsigned int* index);
 void swap_close(void);
+
+int load_from_swap(pt_entry* entry, struct lock* pt_lock);
 
 #endif

@@ -12,8 +12,7 @@
 
 struct cm_entry;
 
-#define MAX_CONT_PAGES (unsigned int)64
-
+struct lock;
 /**
  *
  * Functions:
@@ -30,7 +29,7 @@ void coremap_create(unsigned int npages);
 
 int coremap_bootstrap(paddr_t firstpaddr);
 
-paddr_t get_swappable_frame(pt_entry* entry);
+paddr_t get_swappable_frame(pt_entry* entry, struct lock* lock);
 
 paddr_t get_kernel_frame(unsigned int num);
 

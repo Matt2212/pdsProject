@@ -27,10 +27,8 @@ sys__exit(int status)
 
   proc_setas(NULL);
 
-  kprintf("\n%s\n",strerror(status));
-
   thread_exit();
 
   panic("thread_exit returned (should not happen)\n");
-  
+  (void)status;
 }

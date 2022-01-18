@@ -105,9 +105,11 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
 
     //se posseggo il lock significa che sto effettuando o una load o una swap-in, quindi l'entry nella page_table esiste già, quindi goto end
 
+    KASSERT(fault_addr < MIPS_KSEG0);
+
     if(lock_do_i_hold(table->pt_lock)){
-        KASSERT(table->table[exte] != NULL);
-        KASSERT(table->table[exte][inte].valid);
+        KASSERT(table->table[exte] != NULL); // ho già una entry di secondo livello
+        KASSERT(table->table[exte][inte].valid); //ho già ottenuto un frame
         KASSERT(table->table[exte][inte].frame_no != 0);
         goto end;
     }

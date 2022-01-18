@@ -126,15 +126,14 @@ void vm_tlbshootdown(const struct tlbshootdown *ts) {
 
 
 int vm_fault(int faulttype, vaddr_t faultaddress) {
-    //vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
     paddr_t paddr;
-    int i;
     uint32_t ehi, elo;
-    int spl;
+    int i, spl, e_fault = 1;
     uint8_t read_only = 0;
     struct addrspace *as;
 
     if( faultaddress == (vaddr_t) NULL || faultaddress >= (vaddr_t) MIPS_KSEG0){
+        kprintf("\n%s\n", strerror(EFAULT));
         sys__exit(EFAULT);
     }
     
@@ -159,7 +158,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
         panic("thread_exit returned (should not happen)\n");
         return EFAULT;
     }
-    int e_fault = 1;
     
     for(i=0; i<N_SEGMENTS && e_fault; i++){
         if (faultaddress >= as->segments[i].p_vaddr && faultaddress < as->segments[i].p_vaddr + as->segments[i].p_memsz) {
@@ -170,6 +168,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS ) {    // outside stack
+        kprintf("\n%s\n", strerror(EFAULT));
         sys__exit(EFAULT);
     }
     
@@ -178,7 +177,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     switch (faulttype) {
         case VM_FAULT_READONLY:
-            kprintf("Attempt to write into a read-only memory region: 0x%x\n", faultaddress);
+            kprintf("\n%s\nAttempt to write into a read-only memory region: 0x%x\n", strerror(EFAULT), faultaddress);
             sys__exit(EFAULT);
         case VM_FAULT_READ:
         case VM_FAULT_WRITE:
@@ -188,7 +187,8 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
     
     int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
-    if (err != 0) { 
+    if (err != 0) {
+        kprintf("\n%s\n", strerror(err));
         sys__exit(err);
     }
     faultaddress &= PAGE_FRAME;
@@ -201,8 +201,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     for (i = 0; i < NUM_TLB; i++) {
         tlb_read(&ehi, &elo, i);
-        if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr) ){ // l'entry è già stata scritta
-            
+        if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr)) { // l'entry è già stata scritta
             goto write;
         }
         if (elo & TLBLO_VALID) {

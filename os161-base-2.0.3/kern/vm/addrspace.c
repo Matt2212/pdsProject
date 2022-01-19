@@ -38,7 +38,7 @@
 #include <spl.h>
 #include <mips/tlb.h>
 #include <vfs.h>
-#include <vmstats.h>
+#include <vm_stats.h>
 #endif
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM

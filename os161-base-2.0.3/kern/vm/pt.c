@@ -6,7 +6,7 @@
 #include <addrspace.h>
 #include <kern/errno.h>
 
-#include <vmstats.h>
+#include <vm_stats.h>
 
 
 static struct spinlock spinlock_faults_from_disk = SPINLOCK_INITIALIZER;

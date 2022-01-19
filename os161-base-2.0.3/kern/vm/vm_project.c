@@ -45,7 +45,7 @@
 #include <syscall.h>
 #include <swapfile.h>
 
-#include <vmstats.h>
+#include <vm_stats.h>
 /*
  * Dumb MIPS-only "VM system" that is intended to only be just barely
  * enough to struggle off the ground. You should replace all of this
@@ -83,13 +83,13 @@ void vm_bootstrap(void) {
         panic("No space left on the device to allocate the coremap table\n");
         return;
     }
+    init = true;
+    spinlock_release(&vm_lock);
     err = swap_init();
-    if (!err) {
+    if (err) {
         panic("Error during swap init: %s\n", strerror(err));
         return;
     }
-    init = true;
-    spinlock_release(&vm_lock);
 }
 
 static paddr_t
@@ -252,12 +252,12 @@ write_without_count:
 
 void vm_shutdown(void){
 
+    swap_close(); 
     spinlock_acquire(&vm_lock);
 
-    if(init){    
-        init = false;
-        swap_close(); 
+    if(init){
         coremap_destroy();
+        init = false;
 
         print_stats();                  // print statistics
     }

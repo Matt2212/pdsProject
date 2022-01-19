@@ -178,7 +178,7 @@ void free_frame(paddr_t addr) {
     }
     
     if(coremap == NULL){
-        return ;
+        return;
     }
 
     mysize = coremap[page].nframes;
@@ -214,7 +214,7 @@ void free_frame(paddr_t addr) {
 void coremap_destroy() {
     lock_acquire(coremap_lock);
     npages = 0;
-    kfree(coremap);
+    //kfree(coremap); da problemi
     coremap = NULL;    
     first_page = 0;
     lock_release(coremap_lock);

@@ -1,5 +1,5 @@
 #include <types.h>
-#include <vmstats.h>
+#include <vm_stats.h>
 #include <lib.h>
 
 

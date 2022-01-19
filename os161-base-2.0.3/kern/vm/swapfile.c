@@ -11,7 +11,7 @@
 #include <kern/errno.h>
 #include <coremap.h>
 
-#include <vmstats.h>
+#include <vm_stats.h>
 
 static struct lock* swap_lock;
 static swap_file* swap;
@@ -40,8 +40,8 @@ int swap_init() {
     }
     lock_acquire(swap_lock);
     init = true;
-    lock_release(swap_lock);
     vfs_open(name, O_CREAT | O_RDWR | O_TRUNC, 0664, &swap->file);
+    lock_release(swap_lock);
     return 0;
 }
 
@@ -130,13 +130,15 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
 
 void swap_close() {
     lock_acquire(swap_lock);
+    if (init) {
     bitmap_destroy(swap->bitmap);
     init = false;
-    lock_release(swap_lock);
                                     // leak swap_lock, because the system now will be shutdown
     vfs_close(swap->file);
     kfree(swap);
     swap = NULL;
+    }
+    lock_release(swap_lock);
 }
 
 

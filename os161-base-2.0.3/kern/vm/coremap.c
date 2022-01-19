@@ -75,6 +75,10 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
     uint32_t i = first_page, residual, page;
     bool found = false;
     lock_acquire(coremap_lock);
+    if(coremap == NULL){
+        lock_release(coremap_lock);
+        return 0;
+    }
     while (i < npages && !found) {
         if (!coremap[i].occ && coremap[i].nframes >= num)
             found = true;
@@ -160,26 +164,23 @@ paddr_t get_kernel_frame(unsigned int num) {
 }
 
 void free_frame(paddr_t addr) {
-#if 0
-    unsigned int index, i;
-    KASSERT((addr & PAGE_FRAME) == addr);
-    index = addr / PAGE_SIZE;
-    spinlock_acquire(&free_list_lock);
-    KASSERT(coremap[index].occ);
-    for (i = 0; i < coremap[index].nframes; i++) {
-        coremap[index + i].occ = false;
-        coremap[index + i].fixed = false;
-    }
-    coremap[index].nframes = 0;
-    spinlock_release(&free_list_lock);
-    return;
-#else
+
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
 
     //se distruggo la page table già posseggo la coremap_lock
     bool lock_hold = lock_do_i_hold(coremap_lock);
-    if(!lock_hold)
+    if(!lock_hold){
         lock_acquire(coremap_lock);
+        if(coremap == NULL){
+            lock_release(coremap_lock);
+            return ;
+        }
+    }
+    
+    if(coremap == NULL){
+        return ;
+    }
+
     mysize = coremap[page].nframes;
     KASSERT(mysize>0);
 
@@ -207,13 +208,16 @@ void free_frame(paddr_t addr) {
     }
     if(!lock_hold)
         lock_release(coremap_lock);
-#endif
 }
-// forse la kfree da problemi
+
+
 void coremap_destroy() {
+    lock_acquire(coremap_lock);
     npages = 0;
     kfree(coremap);
-    coremap = NULL;
-    lock_destroy(coremap_lock);
+    coremap = NULL;    
     first_page = 0;
+    lock_release(coremap_lock);
+                                    // leak coremap_lock, because the system now will be shutdown
+    
 }

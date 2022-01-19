@@ -48,3 +48,4 @@ optofffile  paging arch/mips/vm/dumbvm.c
 optfile     paging vm/vm_project.c
 optfile     paging syscall/file_syscalls.c
 optfile     paging syscall/proc_syscalls.c
+optfile     paging vm/vmstats.c

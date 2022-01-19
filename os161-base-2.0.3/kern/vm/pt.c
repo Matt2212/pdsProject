@@ -6,30 +6,11 @@
 #include <addrspace.h>
 #include <kern/errno.h>
 
-#if 0
-vaddr_t get_victim(pt* table ) {
-    static vaddr_t victim = 0;
-    vaddr_t ret = victim;
-    int count = 0;
+#include <vmstats.h>
 
-    while ( table->table[GET_EXT_INDEX(ret)] != NULL && count < 1024 ) {
-        ret += MACRO_PAGE_SIZE;
-    }
 
-    if (count >= 1024) return PAGE_NOT_FOUND; // ritorno un indirizzo che non può rappresentare una pagina
+static struct spinlock spinlock_faults_from_disk = SPINLOCK_INITIALIZER;
 
-    while ( !table->table[GET_EXT_INDEX(ret)][GET_INT_INDEX(ret)].valid || 
-            table->table[GET_EXT_INDEX(ret)][GET_INT_INDEX(ret)].swp ) {
-        ret += PAGE_SIZE;
-        if ( ret == victim ) return PAGE_NOT_FOUND;
-        while ( table->table[GET_EXT_INDEX(ret)] != NULL )
-            ret += MACRO_PAGE_SIZE;
-    }
-
-    victim = ret;
-    return victim;
-}
-#endif
 
 pt* pt_create(){
     pt* ret;
@@ -91,14 +72,27 @@ static int init_rows(pt* table, unsigned int index) {
     return 0;
 }
 
-static int load_from_file(pt* table, unsigned int exte, unsigned int inte, vaddr_t fault_addr) {
+static int load_frame(pt* table, unsigned int exte, unsigned int inte, vaddr_t fault_addr) {
+    static struct spinlock spinlock_zeroed_stats = SPINLOCK_INITIALIZER;
     int err = 0;
     table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte],table->pt_lock) >> 12;
     if (table->table[exte][inte].frame_no == 0)
         return ENOMEM;
     table->table[exte][inte].valid = true;
-    if (fault_addr < PROJECT_STACK_MIN_ADDRESS)     //l'indirizzo si trova al di fuori dello stack
+    if (fault_addr < PROJECT_STACK_MIN_ADDRESS){     //l'indirizzo si trova al di fuori dello stack
         err = load_page(proc_getas(), fault_addr); 
+        
+        spinlock_acquire(&spinlock_faults_from_disk);
+        inc_counter(page_faults_from_elf);
+        inc_counter(page_faults_disk);
+        spinlock_release(&spinlock_faults_from_disk);
+    }
+    else{
+        spinlock_acquire(&spinlock_zeroed_stats);
+        inc_counter(page_faults_zeroed);
+        spinlock_release(&spinlock_zeroed_stats);
+    }
+
     return err;
 }
 
@@ -107,6 +101,8 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     int err = 0;
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
+
+    static struct spinlock spinlock_reload = SPINLOCK_INITIALIZER;
 
     //se posseggo il lock significa che sto effettuando o una load o una swap-in, quindi l'entry nella page_table esiste già, quindi goto end
 
@@ -128,10 +124,25 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
         return err;
     }
     
-    if (table->table[exte][inte].valid == false)
-        err = load_from_file(table, exte, inte, fault_addr);
-    else if (table->table[exte][inte].swp)           // swap
-        err = load_from_swap(&table->table[exte][inte], table->pt_lock);
+    if (table->table[exte][inte].valid == false){
+        err = load_frame(table, exte, inte, fault_addr);
+    }
+    else{
+        if (table->table[exte][inte].swp){           // swap
+            spinlock_acquire(&spinlock_faults_from_disk);
+            inc_counter(page_faults_from_swap);
+            inc_counter(page_faults_disk);
+            spinlock_release(&spinlock_faults_from_disk);
+            err = load_from_swap(&table->table[exte][inte], table->pt_lock);
+        }
+        else{
+            spinlock_acquire(&spinlock_reload);
+            inc_counter(tlb_reloads);
+            spinlock_release(&spinlock_reload);
+        }
+    }
+
+
     if (err) {
         lock_release(table->pt_lock);
         return err;
@@ -143,21 +154,3 @@ end:
     return 0;
 }
 
-#if 0
-void pt_load_frame_from_swap(pt* table, vaddr_t requested) {
-    unsigned int exte, inte, vic_int, vic_ext;
-    exte = GET_EXT_INDEX(requested);
-    inte = GET_INT_INDEX(requested);
-    vaddr_t victim = get_victim(table);
-    if (victim == PAGE_NOT_FOUND)
-        panic("no space ");
-    vic_int = GET_INT_INDEX(victim);  
-    vic_ext = GET_EXT_INDEX(victim);
-    paddr_t frame_victim = table->table[vic_ext][vic_int].frame_no * PAGE_SIZE; //indirizzo fisco del frame vittima
-    table->table[vic_ext][vic_int].frame_no = swap_set(victim);
-    table->table[vic_ext][vic_int].swp = true;
-    swap_get(PADDR_TO_KVADDR(frame_victim), table->table[exte][inte].frame_no); // scrivo sul frame victim il contenuto del frame in posizione frame_no presente nel file di swap
-    table->table[exte][inte].frame_no = frame_victim / PAGE_SIZE;
-    table->table[exte][inte].swp = false;
-}
-#endif

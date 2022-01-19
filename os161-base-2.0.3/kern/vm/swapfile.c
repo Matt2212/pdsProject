@@ -11,6 +11,8 @@
 #include <kern/errno.h>
 #include <coremap.h>
 
+#include <vmstats.h>
+
 static struct lock* swap_lock;
 static swap_file* swap;
 static bool init = false;
@@ -116,7 +118,7 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
 
     // FORSE MULTICORE
     //tlb_invalidation((paddr_t) (address - KSEG0));
-
+    inc_counter(swap_file_writes);
     
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);
     err = VOP_WRITE(swap->file, &ku);
@@ -131,7 +133,7 @@ void swap_close() {
     bitmap_destroy(swap->bitmap);
     init = false;
     lock_release(swap_lock);
-    lock_destroy(swap_lock);
+                                    // leak swap_lock, because the system now will be shutdown
     vfs_close(swap->file);
     kfree(swap);
     swap = NULL;

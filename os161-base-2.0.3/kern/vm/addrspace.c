@@ -38,6 +38,7 @@
 #include <spl.h>
 #include <mips/tlb.h>
 #include <vfs.h>
+#include <vmstats.h>
 #endif
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -105,6 +106,7 @@ void as_activate(void) {
 
     /* Disable interrupts on this CPU while frobbing the TLB. */
     spl = splhigh();
+    inc_counter(tlb_invalidations);
 
     for (i = 0; i < NUM_TLB; i++) {
         tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);

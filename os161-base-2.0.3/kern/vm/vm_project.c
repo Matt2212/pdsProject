@@ -186,7 +186,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
             return EINVAL;
     }
     
-    int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
+    int err = pt_get_frame_from_page(curproc->page_table, faultaddress, &paddr);
     if (err != 0) {
         kprintf("\n%s\n", strerror(err));
         sys__exit(err);

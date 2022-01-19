@@ -37,12 +37,13 @@
  */
 
 #include <spinlock.h>
-
+#include <pt.h>
 
 
 struct addrspace;
 struct thread;
 struct vnode;
+
 
 /*
  * Process structure.
@@ -66,6 +67,9 @@ struct proc {
 	struct spinlock p_lock;		/* Lock for this structure */
 	unsigned p_numthreads;		/* Number of threads in this process */
 
+#if OPT_PAGING 
+	pt* page_table;
+#endif
 	/* VM */
 	struct addrspace *p_addrspace;	/* virtual address space */
 

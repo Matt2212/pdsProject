@@ -54,11 +54,6 @@ as_create(void) {
         return NULL;
     }
 #if OPT_PAGING
-    as->page_table = pt_create();
-    if (as == NULL) {
-        kfree(as);
-        return NULL;
-    }
 
     /*
      * Initialize as needed.
@@ -93,7 +88,6 @@ void as_destroy(struct addrspace *as) {
 #if OPT_PAGING
     if (as == NULL)
          return;
-    pt_destroy(as->page_table);
     vfs_close(as->file);
 #endif
     kfree(as);

@@ -40,7 +40,6 @@
 #include "opt-dumbvm.h"
 #include "opt-paging.h"
 #if OPT_PAGING
-#include <pt.h>
 #define N_SEGMENTS 2
 #define PROJECT_STACK_MIN_ADDRESS USERSTACK-(18 * PAGE_SIZE)
 #endif
@@ -86,7 +85,7 @@ struct addrspace {
     struct vnode *file;
 
 
-    pt *page_table; /* tabella delle pagine */
+    
 
 #endif
 

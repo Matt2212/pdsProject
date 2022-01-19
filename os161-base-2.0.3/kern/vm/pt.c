@@ -53,7 +53,9 @@ pt* pt_create(){
 void pt_destroy(pt* table){
     int i = 0;
     if (table == NULL) return;
-    lock_destroy(table->pt_lock);
+    
+    lock_acquire(coremap_lock);
+    lock_acquire(table->pt_lock);
     for (; i < TABLE_SIZE; i++) {
         if (table->table[i] != NULL) {
             int j = 0;
@@ -61,11 +63,14 @@ void pt_destroy(pt* table){
                 if (table->table[i][j].valid && !table->table[i][j].swp)
                     free_frame(table->table[i][j].frame_no << 12); // passo l'indirizzo fisico del frame in quanto la funzione si aspetta questo
                 else if (table->table[i][j].valid && table->table[i][j].swp)
-                    swap_get((vaddr_t) NULL, table->table[i][j].frame_no); // libera lo swap
+                    swap_get((vaddr_t) NULL, table->table[i][j].frame_no); // libera l'entry di tale pagina nello swap
             }
             kfree(table->table[i]); // dealloco i blocchi utilizzati per contenere e entry
         }
     }
+    lock_release(table->pt_lock);
+    lock_release(coremap_lock);
+    lock_destroy(table->pt_lock);
     kfree(table->table);
     kfree(table);
 }

@@ -13,6 +13,9 @@
 struct cm_entry;
 
 struct lock;
+
+struct lock* coremap_lock;
+
 /**
  *
  * Functions:

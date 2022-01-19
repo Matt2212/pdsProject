@@ -15,7 +15,6 @@ struct cm_entry {
     struct lock *pt_lock;
 };
 
-static struct lock* coremap_lock;
 static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
@@ -26,7 +25,7 @@ static int get_victim() {
     bool loop = false;
     while (!(coremap[victim].occ && !coremap[victim].fixed && coremap[victim].pt_entry != NULL)) {
         if (loop) return -1;
-        victim = (prev_victim + coremap[victim].nframes) % (npages);
+        victim = (victim + coremap[victim].nframes) % (npages);
         if (victim == prev_victim)
             loop = true;
     }
@@ -176,7 +175,11 @@ void free_frame(paddr_t addr) {
     return;
 #else
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
-    lock_acquire(coremap_lock);
+
+    //se distruggo la page table già posseggo la coremap_lock
+    bool lock_hold = lock_do_i_hold(coremap_lock);
+    if(!lock_hold)
+        lock_acquire(coremap_lock);
     mysize = coremap[page].nframes;
     KASSERT(mysize>0);
 
@@ -184,6 +187,7 @@ void free_frame(paddr_t addr) {
         coremap[page + i].occ = false;
         coremap[page + i].fixed = false;
         coremap[page + i].pt_entry = NULL;
+        coremap[page + i].pt_lock = NULL;
     }
 
     i = 0;
@@ -201,7 +205,8 @@ void free_frame(paddr_t addr) {
         i = next;
         next += coremap[next].nframes;
     }
-    lock_release(coremap_lock);
+    if(!lock_hold)
+        lock_release(coremap_lock);
 #endif
 }
 // forse la kfree da problemi

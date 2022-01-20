@@ -221,7 +221,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     for (i = 0; i < NUM_TLB; i++) {
         tlb_read(&ehi, &elo, i);
-        if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr)) { // l'entry è già stata scritta
+        if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr)) { // se ho effettuato una load questa entry già esiste
             goto write_without_count;
         }
         if (elo & TLBLO_VALID) {

@@ -377,7 +377,7 @@ main(int argc, char **argv)
 		//ask();
 		runop('-');
 		printf("\n-\n");
-		runop('o');
+		runop('f');
 		printf("\nf\n");
 		(void )ask;
 	}

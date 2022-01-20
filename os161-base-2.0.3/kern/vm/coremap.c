@@ -11,7 +11,7 @@ struct cm_entry {
     uint32_t occ : 1;
     uint32_t fixed : 1;
     uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
-    pt_entry *pt_entry; // se null e fixed = 0 allora la pagina è in swap
+    pt_entry *pt_entry; 
     struct lock *pt_lock;
 };
 

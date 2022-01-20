@@ -57,7 +57,7 @@ struct vnode;
 #if OPT_PAGING 
 struct segment {
     uint32_t p_vaddr;     /* indirizzo base del segmento */
-    uint32_t p_file_start;    /* all'inizio rappresenta l'offset del segmento nel file offset, negli altri casi rappresenta il primo byte da leggere nell'eseguibile */
+    uint32_t p_file_start;    /* rappresenta l'offset del segmento nel file */
     uint32_t p_file_end;  /* byte successivo all'ultimo byte del segmento nel file eseguibile */
     uint32_t p_memsz;     /* dimensione in byte del segmento in memoria */
     uint32_t readable : 1; /* permessi */

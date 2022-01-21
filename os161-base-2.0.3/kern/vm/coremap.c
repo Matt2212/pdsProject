@@ -211,10 +211,9 @@ void free_frame(paddr_t addr) {
 }
 
 
-void coremap_destroy() {
+void coremap_shutdown() {
     lock_acquire(coremap_lock);
     npages = 0;
-    //kfree(coremap); da problemi
     coremap = NULL;    
     first_page = 0;
     lock_release(coremap_lock);

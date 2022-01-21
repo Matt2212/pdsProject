@@ -5,8 +5,10 @@
 #include <pt.h>
 /**
  * 
- * Lista dei frame liberi, ogni elemento punta al successivo, per ottenere il numero di frame bisogna 
- * efferttuare un right-shift di 12 posizioni
+ * Array di cm_entry. Questa struttura dati contiene informazioni riguardanti il relativo frame.. Ogni elemento dell'array rappresentra lo stato del corrispettivo frame.
+ * ogni frame può essere o libero oppure occupato. Inoltre, solo se il frame è occupato, viene indicato se su esso possa essere effettuato uno swap-out.
+ * Nel caso in cui un processo kernel richieda di allocare un blocco contiguo di frame, il primo elemento del blocco contiguo conterrà la dimensione del blocco.
+ * Lo stesso ragionamento viene applicato per i blocchi contigui di frame liberi. 
  * 
  */
 
@@ -14,16 +16,29 @@ struct cm_entry;
 
 struct lock;
 
-struct lock* coremap_lock;
+struct lock* coremap_lock; //utilizzato per rendere gli accessi alla struttura, thread safe.
 
 /**
  *
- * Functions:
- *     coremap_bootstrap  - inizializza la lista dei frame liberi
+ * 
  *
- *     get_frame  -  restituisce l'indirizzo fisico del primo frame libero della lista
  *
- *     free_frame  -  libera un frame e lo aggiunge in testa alla lista
+ * Funzioni:
+ *     
+ *     coremap_create - Crea una coremap (array di struct cm_entry), di dimensione npages.
+ *     
+ *     coremap_bootstrap  - Inizializza la struttura, firstpaddr è l'indirizzo fisico dell'inizio del primo frame libero.
+ *
+ *     get_swappable_frame  -  Restituisce l'indirizzo fisico dell'inizio di un frame libero. 
+ *     Nel caso nessun frame sia libero, effettua lo swap out di un frame vittima. Una volta trovato, il numero di frame viene 
+ *     scritto nella struct pt_entry.
+ *
+ *     get_kernel_frame - Restituisce l'indirizzo fisico dell'inizio del blocco di frame liberi contigui di dimensione num. 
+ *     Nel caso in cui num sia 1, e non vi siano frame liberi, viene effettuato lo swap out di un frame vittima.
+ *
+ *     free_frame  -  Marca il frame o la sequenza di frame contigui, che iniziano dall'indirizzo fisico addr, come liberi.
+ *
+ *     coremap_shutdown - Termina il funzionamento della coremap.
  *
  */
 
@@ -38,6 +53,6 @@ paddr_t get_kernel_frame(unsigned int num);
 
 void free_frame(paddr_t addr);
 
-void coremap_destroy(void);
+void coremap_shutdown(void);
 
 #endif

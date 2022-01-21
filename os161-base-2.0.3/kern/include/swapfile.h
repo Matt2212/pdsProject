@@ -17,13 +17,15 @@ typedef struct {
 /**
  *
  * Functions:
- *     swap_init  -  apre lo swap_file e lo alloca se non esiste, restituisce il vnode ad esso associato
+ *     swap_init  -  Apre lo swap_file e lo alloca se non esiste, restituisce il vnode ad esso associato.
  * 
- *     swap_get  -  legge il blocco allocato nel file in posizione index, pone il corrispondente bit della bitmap a 1 e scrive il blocco in memoria all'indirizzo logico del kernel address
+ *     swap_get  -  Legge il blocco allocato nel file in posizione index, pone il corrispondente bit della bitmap a 1 e scrive il blocco in memoria all'indirizzo logico del kernel address.
  *     
- *     swap_set  -  legge il blocco di memoria all'indirizzo address e lo scrive nel file utilizzando la prima posizione libera, ritorna la posizione nel file
+ *     swap_set  -  Legge il blocco di memoria all'indirizzo address e lo scrive nel file utilizzando la prima posizione libera, ritorna la posizione nel file.
  *     
- *     swap_close - chiude il file di swap e distrugge la bitmap di gestione
+ *     swap_close - Chiude il file di swap e distrugge la bitmap di gestione.
+ *     
+ *     load_from_swap - Permette di effettuare lo swap-in della pagina descritta nella struct pt_entry.
  */
 
 

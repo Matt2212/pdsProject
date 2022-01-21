@@ -256,7 +256,7 @@ void vm_shutdown(void){
     spinlock_acquire(&vm_lock);
 
     if(init){
-        coremap_destroy();
+        coremap_shutdown();
         init = false;
 
         print_stats();                  // print statistics

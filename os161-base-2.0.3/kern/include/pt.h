@@ -28,14 +28,22 @@ typedef struct
 
 } pt;
 
-// fai i metodi thread safe
+/**
+ *
+ * Functions:
+ *     pt_create  -  Crea la page table.
+ *
+ *     pt_get_frame_from_page  -  Risolvere mediante la Page Table la corrispondenza tra frame e page, ritorna 0 se non vi sono stati errori durante il processo.
+ *
+ *     pt_destroy  -  Distrugge la page table
+ *
+ */
 
-//crea la page tabòe
 pt* pt_create(void);
 
-int pt_get_frame_from_page(pt* table, vaddr_t addr, paddr_t* frame);  // da richiamre per risolvere mediante la Page Table la corrispondenza tra frame e page
+int pt_get_frame_from_page(pt* table, vaddr_t addr, paddr_t* frame);  
 
-void pt_destroy(pt* table); // distrugge la page table
+void pt_destroy(pt* table);
 
 
 #endif

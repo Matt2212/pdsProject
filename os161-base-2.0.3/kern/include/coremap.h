@@ -20,26 +20,27 @@ struct cm_entry {
     struct lock* pt_lock;
 };
 
-struct lock;
+struct spinlock coremap_lock; // utilizzato per rendere gli accessi alla struttura, thread safe.
 
-struct lock* coremap_lock; //utilizzato per rendere gli accessi alla struttura, thread safe.
+int is_swapping;
 
+struct wchan* pt_destroy_queue;
 /**
  *
- * 
+ *
  *
  *
  * Funzioni:
- *     
+ *
  *     coremap_create - Crea una coremap (array di struct cm_entry), di dimensione npages.
- *     
+ *
  *     coremap_bootstrap  - Inizializza la struttura, firstpaddr è l'indirizzo fisico dell'inizio del primo frame libero.
  *
- *     get_swappable_frame  -  Restituisce l'indirizzo fisico dell'inizio di un frame libero. 
- *     Nel caso nessun frame sia libero, effettua lo swap out di un frame vittima. Una volta trovato, il numero di frame viene 
+ *     get_swappable_frame  -  Restituisce l'indirizzo fisico dell'inizio di un frame libero.
+ *     Nel caso nessun frame sia libero, effettua lo swap out di un frame vittima. Una volta trovato, il numero di frame viene
  *     scritto nella struct pt_entry.
  *
- *     get_kernel_frame - Restituisce l'indirizzo fisico dell'inizio del blocco di frame liberi contigui di dimensione num. 
+ *     get_kernel_frame - Restituisce l'indirizzo fisico dell'inizio del blocco di frame liberi contigui di dimensione num.
  *     Nel caso in cui num sia 1, e non vi siano frame liberi, viene effettuato lo swap out di un frame vittima.
  *
  *     free_frame  -  Marca il frame o la sequenza di frame contigui, che iniziano dall'indirizzo fisico addr, come liberi.
@@ -47,7 +48,6 @@ struct lock* coremap_lock; //utilizzato per rendere gli accessi alla struttura, 
  *     coremap_shutdown - Termina il funzionamento della coremap.
  *
  */
-
 
 void coremap_create(unsigned int npages);
 

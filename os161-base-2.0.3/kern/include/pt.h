@@ -23,7 +23,7 @@ typedef struct
 
 typedef struct
 {
-    pt_entry **table; // allocala dinamicamente
+    pt_entry **table; 
     struct lock* pt_lock;
 
 } pt;

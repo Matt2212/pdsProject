@@ -1,14 +1,18 @@
 
 #include <types.h>
-#include <coremap.h>
 #include <lib.h>
 #include <synch.h>
 #include <vm.h>
+#include <wchan.h>
 #include <swapfile.h>
+#include <coremap.h>
 
 static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
+
+int is_swapping = 0;
+struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
 
 static int get_victim() {
     static int prev_victim = 0;
@@ -31,13 +35,10 @@ void coremap_create(unsigned int n_pages) {
 
 int coremap_bootstrap(paddr_t firstpaddr) {
     unsigned int i = 0;
-    if (!coremap) 
+    pt_destroy_queue = wchan_create("pt_destroy_queue");
+    if (!coremap || !pt_destroy_queue)
         return false;
-    coremap_lock = lock_create("coremap_lock");
-    if (!coremap_lock){
-        kfree(coremap);
-        return false;
-    }
+    
     first_page = firstpaddr / PAGE_SIZE;  // firstpaddr è l'indirizzo fisico del primo frame libero
 
     KASSERT(npages > first_page);
@@ -65,9 +66,9 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
     paddr_t addr = 0;
     uint32_t i = first_page, residual, page;
     bool found = false;
-    lock_acquire(coremap_lock);
+    spinlock_acquire(&coremap_lock);
     if(coremap == NULL){
-        lock_release(coremap_lock);
+        spinlock_release(&coremap_lock);
         return 0;
     }
     while (i < npages && !found) {
@@ -78,24 +79,27 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
     }
 
     if (!found && num != 1) {
-        lock_release(coremap_lock);
+        spinlock_release(&coremap_lock);
         return 0;
     } else if (!found) {
         int err = 0;
         unsigned int swp_index;
+        is_swapping = 1;  // le pt non possono essere distrutte
         i = get_victim();
-        if((int)i == -1){
-            lock_release(coremap_lock);
+        coremap[i].fixed = true;
+        if ((int)i == -1) {
+            spinlock_release(&coremap_lock);
             return 0;
         }
-    
-        // swappa
-        if(!lock_do_i_hold(coremap[i].pt_lock)) { //se il frame non e' mappato nella page_table del thread che sta eseguendo il codice
+        spinlock_release(&coremap_lock);
+
+        // swappa                                  //safe poiché le pt non possono essere distrutte
+        if(!lock_do_i_hold(coremap[i].pt_lock)) { //se il frame non e' mappato nella page_table del thread, che sta eseguendo il codice
             // devo settare l'entry come in swap, quindi devo acquisire il lock della pt che possiede la entry
             lock_acquire(coremap[i].pt_lock);
             // eseguo lo swap-out
             err = swap_set(PADDR_TO_KVADDR(i * PAGE_SIZE), &swp_index);
-            if(!err){
+            if (!err) {
                 coremap[i].pt_entry->swp = true;
                 coremap[i].pt_entry->frame_no = swp_index;
             }
@@ -108,12 +112,23 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
                 coremap[i].pt_entry->frame_no = swp_index;
             }
         }
-        
         if(err) {
             kprintf("%s", strerror(err));
-            lock_release(coremap_lock);
             return 0;
         }
+
+        
+       
+        spinlock_acquire(&coremap_lock);
+        coremap[i].fixed = fixed;
+        coremap[i].pt_entry = entry;
+        coremap[i].pt_lock = lock;
+        is_swapping = 0;
+        wchan_wakeall(pt_destroy_queue, &coremap_lock);
+        spinlock_release(&coremap_lock);
+        addr = (paddr_t)(i * PAGE_SIZE);
+        bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
+        return addr;
     }
 
     page = i;
@@ -137,7 +152,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
     }
     addr = (paddr_t)(page * PAGE_SIZE);
     bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
-    lock_release(coremap_lock);
+    spinlock_release(&coremap_lock);
     return addr;    
 
 }
@@ -155,11 +170,11 @@ void free_frame(paddr_t addr) {
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
 
     //se distruggo la page table già posseggo la coremap_lock
-    bool lock_hold = lock_do_i_hold(coremap_lock);
+    bool lock_hold = spinlock_do_i_hold(&coremap_lock);
     if(!lock_hold){
-        lock_acquire(coremap_lock);
+        spinlock_acquire(&coremap_lock);
         if(coremap == NULL){
-            lock_release(coremap_lock);
+            spinlock_release(&coremap_lock);
             return ;
         }
     }
@@ -194,14 +209,14 @@ void free_frame(paddr_t addr) {
         next += coremap[next].nframes;
     }
     if(!lock_hold)
-        lock_release(coremap_lock);
+        spinlock_release(&coremap_lock);
 }
 
 
 void coremap_shutdown() {
-    lock_acquire(coremap_lock);
+    spinlock_acquire(&coremap_lock);
     npages = 0;
     coremap = NULL;    
     first_page = 0;
-    lock_release(coremap_lock);
+    spinlock_release(&coremap_lock);
 }

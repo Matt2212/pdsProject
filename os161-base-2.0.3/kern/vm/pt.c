@@ -2,6 +2,7 @@
 #include <pt.h>
 #include <swapfile.h>
 #include <lib.h>
+#include <wchan.h>
 #include <proc.h>
 #include <addrspace.h>
 #include <kern/errno.h>
@@ -31,27 +32,36 @@ pt* pt_create(){
     return ret;
 }
 
-void pt_destroy(pt* table){
+void pt_destroy(pt* table){ // puo' essere eseguita una sola volta
     int i = 0;
     if (table == NULL) return;
+    spinlock_acquire(&coremap_lock);
     
-    lock_acquire(coremap_lock);
-    lock_acquire(table->pt_lock);
+    while (is_swapping) {
+        wchan_sleep(pt_destroy_queue, &coremap_lock);
+    }
+
     for (; i < TABLE_SIZE; i++) {
         if (table->table[i] != NULL) {
             int j = 0;
-            for(; j < TABLE_SIZE; j++) {
+            for(; j < TABLE_SIZE; j++) 
                 if (table->table[i][j].valid && !table->table[i][j].swp)
                     free_frame(table->table[i][j].frame_no << 12); // passo l'indirizzo fisico del frame in quanto la funzione si aspetta questo
-                else if (table->table[i][j].valid && table->table[i][j].swp)
-                    swap_get((vaddr_t) NULL, table->table[i][j].frame_no); // libera l'entry di tale pagina nello swap
-            }
-            kfree(table->table[i]); // dealloco i blocchi utilizzati per contenere e entry
         }
     }
-    lock_release(table->pt_lock);
-    lock_release(coremap_lock);
-    lock_destroy(table->pt_lock);
+    lock_destroy(table->pt_lock); //safe perchè sono l'ultimo thread del processo
+    spinlock_release(&coremap_lock);
+
+    for (i = 0; i < TABLE_SIZE; i++) {
+        if (table->table[i] != NULL) {
+            int j = 0;
+            for (; j < TABLE_SIZE; j++) 
+                if (table->table[i][j].valid && table->table[i][j].swp)
+                    swap_get((vaddr_t)NULL, table->table[i][j].frame_no);  // libera l'entry di tale pagina nello swap
+            kfree(table->table[i]);  // dealloco i blocchi utilizzati per contenere e entry
+        }
+    }
+
     kfree(table->table);
     kfree(table);
 }

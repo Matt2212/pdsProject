@@ -116,8 +116,7 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
         }
     }
 
-    // FORSE MULTICORE
-    //tlb_invalidation((paddr_t) (address - KSEG0));
+    
     inc_counter(swap_file_writes);
     
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);

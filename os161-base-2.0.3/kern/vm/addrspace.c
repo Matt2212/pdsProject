@@ -230,6 +230,8 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
             break;
     }
 
+    KASSERT(i < N_SEGMENTS);
+
     vaddr = vaddr & PAGE_FRAME;
 
 
@@ -242,7 +244,7 @@ int load_page(struct addrspace *as, vaddr_t vaddr) {
 
 
     // il limite del segmento appartiene alla pagina da caricare? 
-    if( as->segments[i].p_vaddr + as->segments[i].p_memsz > vaddr && as->segments[i].p_vaddr + as->segments[i].p_memsz < vaddr + m_size ) 
+    if( as->segments[i].p_vaddr + as->segments[i].p_memsz < vaddr + m_size ) 
         m_size = (as->segments[i].p_vaddr + as->segments[i].p_memsz) - vaddr;
    
     

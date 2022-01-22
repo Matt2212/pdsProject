@@ -6,15 +6,6 @@
 #include <vm.h>
 #include <swapfile.h>
 
-
-struct cm_entry {
-    uint32_t occ : 1;
-    uint32_t fixed : 1;
-    uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
-    pt_entry *pt_entry; 
-    struct lock *pt_lock;
-};
-
 static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
@@ -97,16 +88,12 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
             lock_release(coremap_lock);
             return 0;
         }
-
-        // gestisti la TLB in caso di swap out (invalidation??)
-        // (MULTICORE PROB)
-
     
-
         // swappa
         if(!lock_do_i_hold(coremap[i].pt_lock)) { //se il frame non e' mappato nella page_table del thread che sta eseguendo il codice
             // devo settare l'entry come in swap, quindi devo acquisire il lock della pt che possiede la entry
             lock_acquire(coremap[i].pt_lock);
+            // eseguo lo swap-out
             err = swap_set(PADDR_TO_KVADDR(i * PAGE_SIZE), &swp_index);
             if(!err){
                 coremap[i].pt_entry->swp = true;
@@ -217,6 +204,4 @@ void coremap_shutdown() {
     coremap = NULL;    
     first_page = 0;
     lock_release(coremap_lock);
-                                    // leak coremap_lock, because the system now will be shutdown
-    
 }

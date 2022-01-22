@@ -5,14 +5,20 @@
 #include <pt.h>
 /**
  * 
- * Array di cm_entry. Questa struttura dati contiene informazioni riguardanti il relativo frame.. Ogni elemento dell'array rappresentra lo stato del corrispettivo frame.
+ * Array di cm_entry cioè una struttura dati contenente informazioni riguardanti il relativo frame. Ogni elemento dell'array rappresentra lo stato del corrispettivo frame.
  * ogni frame può essere o libero oppure occupato. Inoltre, solo se il frame è occupato, viene indicato se su esso possa essere effettuato uno swap-out.
  * Nel caso in cui un processo kernel richieda di allocare un blocco contiguo di frame, il primo elemento del blocco contiguo conterrà la dimensione del blocco.
  * Lo stesso ragionamento viene applicato per i blocchi contigui di frame liberi. 
  * 
  */
 
-struct cm_entry;
+struct cm_entry {
+    uint32_t occ : 1;
+    uint32_t fixed : 1;
+    uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
+    pt_entry* pt_entry;
+    struct lock* pt_lock;
+};
 
 struct lock;
 

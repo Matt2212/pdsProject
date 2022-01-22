@@ -134,7 +134,7 @@ void free_kpages(vaddr_t addr) {
 
 void vm_tlbshootdown(const struct tlbshootdown *ts) {
     (void)ts;
-    panic("dumbvm tried to do tlb shootdown?!\n");
+    panic("vm_project tried to do tlb shootdown?!\n");
 }
 
 
@@ -183,7 +183,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
         if (faultaddress >= as->segments[i].p_vaddr && faultaddress < as->segments[i].p_vaddr + as->segments[i].p_memsz) {
             e_fault = 0;
             read_only = !(as->segments[i].writable);
-            break;
         }
     }
 

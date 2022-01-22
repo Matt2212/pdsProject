@@ -19,7 +19,7 @@ static bool init = false;
 
 //ritorna 0 se non ci sono stati errori
 int swap_init() {
-    char name[] = "emu0:/.SWAP_FILE";
+    char name[] = "emu0:/SWAPFILE";
     swap = kmalloc(sizeof(swap_file));
     if (swap == NULL) {
         panic("OUT OF MEMORY");

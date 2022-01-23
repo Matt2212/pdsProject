@@ -169,7 +169,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     as = proc_getas();
     
-    if (as == NULL) {
+    if (as == NULL || !as->active) {
         /*
          * No address space set up. This is probably also a
          * kernel fault early in boot.
@@ -205,7 +205,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
             return EINVAL;
     }
     
-    int err = pt_get_frame_from_page(curproc->page_table, faultaddress, &paddr);
+    int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
     if (err != 0) {
         kprintf("\n%s\n", strerror(err));
         sys__exit(err);

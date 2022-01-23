@@ -59,6 +59,16 @@ as_create(void) {
     /*
      * Initialize as needed.
      */
+
+
+    as->page_table = pt_create();
+    if (as == NULL) {
+        kfree(as);
+        return NULL;
+    }
+
+    as->active = true;
+
     as->index = 0;
 #endif
     return as;
@@ -89,6 +99,7 @@ void as_destroy(struct addrspace *as) {
 #if OPT_PAGING
     if (as == NULL)
          return;
+    pt_destroy(as->page_table);
     vfs_close(as->file);
 #endif
     kfree(as);
@@ -137,6 +148,8 @@ void as_deactivate(void) {
      * anything. See proc.c for an explanation of why it (might)
      * be needed.
      */
+
+    proc_getas()->active = false;
 }
 
 /*

@@ -72,14 +72,6 @@ proc_create(const char *name)
 		kfree(proc);
 		return NULL;
 	}
-#if OPT_PAGING
-	proc->page_table = pt_create();
-	if(proc->page_table == NULL){
-		kfree(proc->p_name);
-		kfree(proc);
-		return NULL;
-	}
-#endif
 
 	proc->p_numthreads = 0;
 	spinlock_init(&proc->p_lock);
@@ -175,9 +167,7 @@ proc_destroy(struct proc *proc)
 
 	KASSERT(proc->p_numthreads == 0);
 	spinlock_cleanup(&proc->p_lock);
-#if OPT_PAGING
-	pt_destroy(proc->page_table);
-#endif
+
 	kfree(proc->p_name);
 	kfree(proc);
 }

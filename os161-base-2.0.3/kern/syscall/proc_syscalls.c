@@ -22,10 +22,7 @@ void
 sys__exit(int status)
 {
   /* get address space of current process and destroy */
-  struct addrspace *as = proc_getas();
-  as_destroy(as);
-
-  proc_setas(NULL);
+  as_deactivate(); //disattivazione dell'address space
 
   thread_exit();
 

@@ -13,7 +13,6 @@
 #define PAGE_NOT_FOUND 1
 
 
-
 typedef struct
 {
     unsigned int frame_no:20;
@@ -27,6 +26,17 @@ typedef struct
     struct lock* pt_lock;
 
 } pt;
+
+/**
+ * Partizionamento indirizzo logico user
+ *  
+ *  +---------------------------------+-----------------------------------+---------------------+
+ *  |                                 |                                   |                     |
+ *  | indice page table primo livello | indice page table secondo livello | offset nella pagina |
+ *  |                                 |                                   |                     |
+ *  +---------------------------------+-----------------------------------+---------------------+
+ *  31                                22                                  12                    0
+ */
 
 /**
  *

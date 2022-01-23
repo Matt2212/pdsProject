@@ -91,9 +91,11 @@ struct addrspace {
 
 #endif
 
+};
+
 /* Address space Layout
  * |  Stack Top (grows down)  |
- * |                          |              
+ * |                          |
  * |                          |
  * |                          |
  * |                          |
@@ -101,10 +103,8 @@ struct addrspace {
  * |                          |
  * |                          |
  * |          DATA            |
- * |          CODE            | 
-*/
-
-};
+ * |          CODE            |
+ */
 
 /*
  * Functions in addrspace.c:

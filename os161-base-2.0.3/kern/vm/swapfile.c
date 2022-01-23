@@ -59,7 +59,7 @@ int swap_get(vaddr_t address, unsigned int index) {
             return EPERM;
         }
         bitmap_unmark(swap->bitmap, index);
-        //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in
+        //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in, e.g. durante una pt destroy
         if ((void *)address == NULL) {
             lock_release(swap_lock);
             return ENOSPC;
@@ -140,7 +140,7 @@ void swap_close() {
     lock_release(swap_lock);
 }
 
-
+//presuppongo di possedere il lock della page table
 int load_from_swap(pt_entry* entry, struct lock* pt_lock){
 
     int err;
@@ -148,7 +148,7 @@ int load_from_swap(pt_entry* entry, struct lock* pt_lock){
     
 
     KASSERT(entry->swp);
-
+    KASSERT(lock_do_i_hold(pt_lock));
     lock_acquire(swap_lock);
 
     frame = get_swappable_frame(entry, pt_lock);

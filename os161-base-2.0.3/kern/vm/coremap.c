@@ -6,6 +6,7 @@
 #include <wchan.h>
 #include <swapfile.h>
 #include <coremap.h>
+#include <kern/errno.h>
 
 static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
@@ -80,6 +81,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
 
     if (!found && num != 1) {
         spinlock_release(&coremap_lock);
+        panic(strerror(ENOMEM));
         return 0;
     } else if (!found) {
         int err = 0;
@@ -89,6 +91,7 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
         coremap[i].fixed = true;
         if ((int)i == -1) {
             spinlock_release(&coremap_lock);
+            panic(strerror(ENOMEM));
             return 0;
         }
         spinlock_release(&coremap_lock);
@@ -116,8 +119,6 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
             kprintf("%s", strerror(err));
             return 0;
         }
-
-        
        
         spinlock_acquire(&coremap_lock);
         coremap[i].fixed = fixed;

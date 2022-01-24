@@ -38,6 +38,7 @@
 #include <spl.h>
 #include <mips/tlb.h>
 #include <vfs.h>
+#include <vnode.h>
 #include <vm_stats.h>
 #endif
 /*
@@ -76,26 +77,42 @@ as_create(void) {
 
 int as_copy(struct addrspace *old, struct addrspace **ret) {
     struct addrspace *newas;
+#if OPT_PAGING
+    int err = 0, i = 0;
+#endif
 
     newas = as_create();
     if (newas == NULL) {
         return ENOMEM;
     }
 
+#if OPT_PAGING
+
+    // segements copy
+    for (; i < N_SEGMENTS; i++)
+        newas->segments[i] = old->segments[i];
+
+    newas->file = old->file;
+    VOP_INCREF(old->file);
+    newas->ignore_permissions = old->ignore_permissions;
+
+    err = pt_copy(old->page_table, newas->page_table);
+    if (err) {
+        as_destroy(newas);
+        return err;
+    }
+#else
     /*
      * Write this.
      */
 
     (void)old;
-
+#endif
     *ret = newas;
     return 0;
 }
 
 void as_destroy(struct addrspace *as) {
-    /*
-     * Clean up as needed.
-     */
 #if OPT_PAGING
     if (as == NULL)
          return;
@@ -197,35 +214,31 @@ int as_define_region(struct addrspace *as, vaddr_t vaddr, size_t memsize,
 }
 
 int as_prepare_load(struct addrspace *as) {
-    /*
-     * Write this.
-     */
 #if OPT_PAGING
     as->ignore_permissions = 1;
 #else
+    /*
+     * Write this.
+     */
     (void)as;
 #endif
     return 0;
 }
 
 int as_complete_load(struct addrspace *as) {
-    /*
-     * Write this.
-     */
-
 #if OPT_PAGING
     as->ignore_permissions = 0;
 #else
+    /*
+     * Write this.
+     */
     (void)as;
 #endif
     return 0;
 }
 
 int as_define_stack(struct addrspace *as, vaddr_t *stackptr) {
-    /*
-     * Write this.
-     */
-
+    
     (void)as;
 
     /* Initial user-level stack pointer */

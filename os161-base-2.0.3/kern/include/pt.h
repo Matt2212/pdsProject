@@ -45,13 +45,17 @@ typedef struct
  *
  *     pt_get_frame_from_page  -  Risolvere mediante la Page Table la corrispondenza tra frame e page, ritorna 0 se non vi sono stati errori durante il processo.
  *
+ *     int pt_copy - crea una copia profonda della papge_table
+ *
  *     pt_destroy  -  Distrugge la page table
  *
  */
 
 pt* pt_create(void);
 
-int pt_get_frame_from_page(pt* table, vaddr_t addr, paddr_t* frame);  
+int pt_get_frame_from_page(pt* table, vaddr_t addr, paddr_t* frame);
+
+int pt_copy(pt* old, pt* new);
 
 void pt_destroy(pt* table);
 

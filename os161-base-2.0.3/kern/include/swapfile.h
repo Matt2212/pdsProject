@@ -1,7 +1,7 @@
 #ifndef _SWAP_FILE_H_
 #define _SWAP_FILE_H_
 
-#include <bitmap.h>
+#include <types.h>
 #include <vm.h>
 
 #include <pt.h>
@@ -10,7 +10,7 @@
 
 typedef struct {
     struct vnode *file;
-    struct bitmap *bitmap;
+    uint8_t refs[SWAP_MAX];
 } swap_file;
 // bit table che indica se un blocco sia occupato (1) o meno (0)
 
@@ -32,6 +32,7 @@ typedef struct {
 int swap_init(void);
 int swap_get(vaddr_t address, unsigned int index);
 int swap_set(vaddr_t address, unsigned int* index);
+void swap_inc_ref(unsigned int index);
 void swap_close(void);
 
 int load_from_swap(pt_entry* entry, struct lock* pt_lock);

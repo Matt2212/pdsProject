@@ -25,15 +25,8 @@ int swap_init() {
         panic("OUT OF MEMORY");
         return ENOMEM;
     }
-    swap->bitmap = bitmap_create(SWAP_MAX);
-    if (swap->bitmap == NULL) {
-        kfree(swap);
-        panic("OUT OF MEMORY");
-        return ENOMEM;
-    }
     swap_lock = lock_create("swap_lock");
     if (swap_lock == NULL) {
-        bitmap_destroy(swap->bitmap);
         kfree(swap);
         panic("OUT OF MEMORY");
         return ENOMEM;
@@ -58,7 +51,8 @@ int swap_get(vaddr_t address, unsigned int index) {
             lock_release(swap_lock);
             return EPERM;
         }
-        bitmap_unmark(swap->bitmap, index);
+        KASSERT(swap->refs[index] > 0);
+        swap->refs[index]--;
         //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in, e.g. durante una pt destroy
         if ((void *)address == NULL) {
             lock_release(swap_lock);
@@ -69,7 +63,8 @@ int swap_get(vaddr_t address, unsigned int index) {
         if (!init) {
             return EPERM;
         }
-        bitmap_unmark(swap->bitmap, index);
+        KASSERT(swap->refs[index] > 0);
+        swap->refs[index]--;
         //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in
         if ((void *)address == NULL) {
             return ENOSPC;
@@ -90,7 +85,7 @@ int swap_get(vaddr_t address, unsigned int index) {
 int swap_set(vaddr_t address, unsigned int* ret_index) {
     struct iovec iov;
 	struct uio ku;
-    unsigned int index;
+    unsigned int index = 0;
     int err = 0;
     
     bool lock_hold = lock_do_i_hold(swap_lock);
@@ -100,20 +95,25 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
             lock_release(swap_lock);
             return EPERM;
         }
-        if (bitmap_alloc(swap->bitmap, &index) == ENOSPC){
+        for(; index < SWAP_MAX && swap->refs[index] > 0; index++);   
+        if (index == SWAP_MAX) {
             lock_release(swap_lock);
             panic("Out of swap space");
             return ENOSPC;
         }
+        swap->refs[index] = 1;
     }
     else {
         if (!init) {
             return EPERM;
         }
-        if (bitmap_alloc(swap->bitmap, &index) == ENOSPC){
+        for(; index < SWAP_MAX && swap->refs[index] > 0; index++);   
+        if (index == SWAP_MAX) {
+            lock_release(swap_lock);
             panic("Out of swap space");
             return ENOSPC;
         }
+        swap->refs[index] = 1;
     }
 
     
@@ -130,7 +130,6 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
 void swap_close() {
     lock_acquire(swap_lock);
     if (init) {
-    bitmap_destroy(swap->bitmap);
     init = false;
                                     // leak swap_lock, because the system now will be shutdown
     vfs_close(swap->file);
@@ -168,4 +167,10 @@ int load_from_swap(pt_entry* entry, struct lock* pt_lock){
     lock_release(swap_lock);
 
     return err;
+}
+
+void swap_inc_ref(unsigned int index) {
+    lock_acquire(swap_lock);
+    swap->refs[index]++;
+    lock_release(swap_lock);
 }

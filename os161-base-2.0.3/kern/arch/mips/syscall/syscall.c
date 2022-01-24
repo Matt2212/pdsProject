@@ -181,7 +181,7 @@ syscall(struct trapframe *tf)
 void
 enter_forked_process(struct trapframe *tf)
 {
-#if OPT_PAGING
+#if OPT_PAGING && 0
     // Duplicate frame so it's on stack
     struct trapframe forkedTf = *tf;  // copy trap frame onto kernel stack
 

@@ -96,6 +96,8 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
         }
         spinlock_release(&coremap_lock);
 
+        //studia i casi in cui vi sia deadlock durante un uso normale
+
         // swappa                                  //safe poiché le pt non possono essere distrutte
         if(!lock_do_i_hold(coremap[i].pt_lock)) { //se il frame non e' mappato nella page_table del thread, che sta eseguendo il codice
             // devo settare l'entry come in swap, quindi devo acquisire il lock della pt che possiede la entry

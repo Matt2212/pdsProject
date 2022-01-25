@@ -40,6 +40,7 @@
 #include <vfs.h>
 #include <vnode.h>
 #include <vm_stats.h>
+#include <current.h>
 #endif
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -83,6 +84,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
 
     newas = as_create();
     if (newas == NULL) {
+        *ret = NULL;
         return ENOMEM;
     }
 
@@ -95,10 +97,12 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
     newas->file = old->file;
     VOP_INCREF(old->file);
     newas->ignore_permissions = old->ignore_permissions;
-
+    newas->active = true;
+    // page_table_copy
     err = pt_copy(old->page_table, newas->page_table);
     if (err) {
         as_destroy(newas);
+        *ret = NULL;
         return err;
     }
 #else

@@ -36,6 +36,9 @@
 #include <current.h>
 #include <syscall.h>
 
+#if OPT_PAGING
+#include <addrspace.h>
+#endif
 
 /*
  * System call dispatcher.
@@ -109,7 +112,6 @@ syscall(struct trapframe *tf)
 				 (userptr_t)tf->tf_a1);
 		break;
 #if OPT_PAGING
-                err = 0;
             case SYS_write:
                 retval = sys_write((int)tf->tf_a0,
                                    (userptr_t)tf->tf_a1,
@@ -124,7 +126,6 @@ syscall(struct trapframe *tf)
                 retval = sys_read((int)tf->tf_a0,
                                   (userptr_t)tf->tf_a1,
                                   (size_t)tf->tf_a2);
-                /* error: function not implemented */
                 if (retval < 0)
                     err = ENOSYS;
                 else
@@ -134,6 +135,27 @@ syscall(struct trapframe *tf)
                 /* TODO: just avoid crash */
                 sys__exit((int)tf->tf_a0);
                 break;
+            case SYS_waitpid:
+                retval = sys_waitpid((pid_t)tf->tf_a0,
+                                     (userptr_t)tf->tf_a1,
+                                     (int)tf->tf_a2);
+                if (retval < 0)
+                    err = ENOSYS;
+                else
+                    err = 0;
+                break;
+            case SYS_getpid:
+                retval = sys_getpid();
+                if (retval < 0)
+                    err = ENOSYS;
+                else
+                    err = 0;
+                break;
+
+            case SYS_fork:
+                err = sys_fork(tf, &retval);
+                break;
+
 #endif
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
@@ -181,9 +203,11 @@ syscall(struct trapframe *tf)
 void
 enter_forked_process(struct trapframe *tf)
 {
-#if OPT_PAGING && 0
+#if OPT_PAGING
     // Duplicate frame so it's on stack
     struct trapframe forkedTf = *tf;  // copy trap frame onto kernel stack
+
+    kfree(tf); /* work done. now can be freed */
 
     forkedTf.tf_v0 = 0;  // return value is 0
     forkedTf.tf_a3 = 0;  // return with success

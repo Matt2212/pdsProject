@@ -131,7 +131,6 @@ void swap_close() {
     lock_acquire(swap_lock);
     if (init) {
     init = false;
-                                    // leak swap_lock, because the system now will be shutdown
     vfs_close(swap->file);
     kfree(swap);
     swap = NULL;
@@ -149,13 +148,12 @@ int load_from_swap(pt_entry* entry, struct lock* pt_lock){
     KASSERT(entry->swp);
     KASSERT(lock_do_i_hold(pt_lock));
     lock_acquire(swap_lock);
-
+    //crea la get_swappable_fixed_frame
     frame = get_swappable_frame(entry, pt_lock);
     if(frame == 0){
         lock_release(swap_lock);
         return ENOMEM;
     }
-
 
     err = swap_get(PADDR_TO_KVADDR(frame), entry->frame_no);
      
@@ -163,14 +161,18 @@ int load_from_swap(pt_entry* entry, struct lock* pt_lock){
         entry->frame_no = frame >> 12;
         entry->swp = false;
     }
-
+    //rendi il frame unfixed
     lock_release(swap_lock);
 
     return err;
 }
 
 void swap_inc_ref(unsigned int index) {
-    lock_acquire(swap_lock);
-    swap->refs[index]++;
-    lock_release(swap_lock);
+    KASSERT(index < SWAP_MAX);
+    if (!lock_do_i_hold(swap_lock)) {
+        lock_acquire(swap_lock);
+        swap->refs[index]++;
+        lock_release(swap_lock);
+    } else
+        swap->refs[index]++;
 }

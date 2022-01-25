@@ -15,6 +15,7 @@ static struct spinlock spinlock_faults_from_disk = SPINLOCK_INITIALIZER;
 
 pt* pt_create(){
     pt* ret;
+    static int id = 0;
     ret = kmalloc(sizeof(pt));
     if(ret == NULL)
         return NULL;
@@ -23,7 +24,9 @@ pt* pt_create(){
         kfree(ret);
         return NULL;
     }
-    ret->pt_lock = lock_create("pt_lock");
+    char name[16] = "pt_lock";
+    snprintf(name, 16, "pt_lock_%d", id++);
+    ret->pt_lock = lock_create(name);
     if (ret->pt_lock == NULL) {
         kfree(ret->table);
         kfree(ret);
@@ -166,7 +169,11 @@ end:
 
 int pt_copy(pt* old, pt* new) {
     int i = 0;
-    lock_acquire(old->pt_lock);
+
+    //prima della copia rendi i frames non swappabili
+
+    //lock_acquire(old->pt_lock);
+    lock_acquire(new->pt_lock);
     for (; i < TABLE_SIZE; i++) {
         if (old->table[i] != NULL) {
             if (init_rows(new, i << 22)) {
@@ -195,6 +202,7 @@ int pt_copy(pt* old, pt* new) {
                 } 
         }
     }
-    lock_release(old->pt_lock);
+    lock_release(new->pt_lock);
+    //lock_release(old->pt_lock);
     return 0;
 }

@@ -11,6 +11,8 @@
 #include <syscall.h>
 #include <lib.h>
 
+#include <spinlock.h>
+
 /*
  * simple file system calls for write/read
  */
@@ -19,16 +21,16 @@ sys_write(int fd, userptr_t buf_ptr, size_t size)
 {
   int i;
   char *p = (char *)buf_ptr;
-
-  if (fd!=STDOUT_FILENO && fd!=STDERR_FILENO) {
-    kprintf("sys_write supported only to stdout\n");
-    return -1;
+  static struct spinlock write_lock = SPINLOCK_INITIALIZER;
+  if (fd != STDOUT_FILENO && fd != STDERR_FILENO) {
+      kprintf("sys_write supported only to stdout\n");
+      return -1;
   }
-
-  for (i=0; i<(int)size; i++) {
-    putch(p[i]);
+  spinlock_acquire(&write_lock);
+  for (i = 0; i < (int)size; i++) {
+      putch(p[i]);
   }
-
+  spinlock_release(&write_lock);
   return (int)size;
 }
 

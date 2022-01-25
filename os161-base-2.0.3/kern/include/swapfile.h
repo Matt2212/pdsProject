@@ -12,7 +12,7 @@ typedef struct {
     struct vnode *file;
     uint8_t refs[SWAP_MAX];
 } swap_file;
-// bit table che indica se un blocco sia occupato (1) o meno (0)
+
 
 /**
  *

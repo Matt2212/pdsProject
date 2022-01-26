@@ -55,7 +55,7 @@ int swap_get(vaddr_t address, unsigned int index) {
         //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in, e.g. durante una pt destroy
         if ((void *)address == NULL) {
             lock_release(swap_lock);
-            return ENOSPC;
+            return 0;
         }
     }
     else {
@@ -66,7 +66,7 @@ int swap_get(vaddr_t address, unsigned int index) {
         swap->refs[index]--;
         //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in
         if ((void *)address == NULL) {
-            return ENOSPC;
+            return 0;
         }
     }
 
@@ -137,7 +137,6 @@ void swap_close() {
     lock_release(swap_lock);
 }
 
-//presuppongo di possedere il lock della page table
 int load_from_swap(pt_entry* entry){
 
     int err;
@@ -163,7 +162,7 @@ int load_from_swap(pt_entry* entry){
 
 void swap_inc_ref(unsigned int index) {
     KASSERT(index < SWAP_MAX);
-    if (!lock_do_i_hold(swap_lock)) {
+    if (!lock_do_i_hold(swap_lock)) { //mwttila in una kassert
         lock_acquire(swap_lock);
         swap->refs[index]++;
         lock_release(swap_lock);

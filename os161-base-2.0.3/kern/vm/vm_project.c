@@ -233,9 +233,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     i = tlb_get_rr_victim();
     inc_counter(tlb_faults_with_replace);
 write:
-    spinlock_acquire(&vm_lock);
     inc_counter(tlb_faults);
-    spinlock_release(&vm_lock);
 write_without_count:
     ehi = faultaddress;
     if (read_only && !as->ignore_permissions)

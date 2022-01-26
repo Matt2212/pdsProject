@@ -60,17 +60,11 @@ void pt_destroy(pt* table){ // puo' essere eseguita una sola volta, operazione a
 }
 
 static int init_rows(pt* table, unsigned int index) {
-    int i = 0;
     index = GET_EXT_INDEX(index);
-    
-
     table->table[index] = kmalloc(sizeof(pt_entry)*TABLE_SIZE);
     if (table->table[index] == NULL) {
         kprintf("No space left for pt creation \n");
         return ENOMEM;
-    }
-    for(; i < TABLE_SIZE; i++){ // forse inutile
-        table->table[index][i].valid = false; // basta invalidare l' entry per far perdere di significato tutto il resto
     }
     return 0;
 }
@@ -102,7 +96,6 @@ static int load_frame(pt* table, unsigned int exte, unsigned int inte, vaddr_t f
 int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     unsigned int exte, inte;
     int err = 0;
-    bool lock_hold = false;
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
 
@@ -112,53 +105,53 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
 
     KASSERT(fault_addr < MIPS_KSEG0);
 
-    if(lock_do_i_hold(table->pt_lock)){ //sono in fase di load
+    if(lock_do_i_hold(table->pt_lock)){ //sono in fase di load, posseggo un frame fixed, quindi non può essere vittima di swap
         KASSERT(table->table[exte] != NULL); // ho già una entry di secondo livello
         KASSERT(table->table[exte][inte].valid); //ho già ottenuto un frame
         KASSERT(table->table[exte][inte].frame_no != 0);
-        lock_hold = true;
+        *frame = table->table[exte][inte].frame_no << 12;
+        return 0;
     }
 
-    if (!lock_hold) lock_acquire(table->pt_lock);
+    lock_acquire(table->pt_lock);
     // inizializzazione riga di secondo livello
     if (table->table[exte] == NULL)
         err = init_rows(table, fault_addr);
     if (err) {
-        if (!lock_hold) lock_release(table->pt_lock);
+        lock_release(table->pt_lock);
         return err;
     }
     
-    if (table->table[exte][inte].valid == false){
+    if (table->table[exte][inte].valid == false)
         err = load_frame(table, exte, inte, fault_addr);
-    }
-
-    int spl = splhigh();
-    while(table->table[exte][inte].swapping) { //busy wait unless swap finished
-        splx(spl);
-        thread_yield();
-        spl = splhigh();
-    }
-    if (table->table[exte][inte].swp) {  // swap in
-        spinlock_acquire(&spinlock_faults_from_disk);
-        inc_counter(page_faults_from_swap);
-        inc_counter(page_faults_disk);
-        spinlock_release(&spinlock_faults_from_disk);
-        splx(spl);
-        err = load_from_swap(&table->table[exte][inte]);
-    } else { //leggo da coremap
-        coremap_set_fixed(table->table[exte][inte].frame_no); //da questo momento in poi sino alla rscrittura in tlb 
-        splx(spl);
-        spinlock_acquire(&spinlock_reload);
-        inc_counter(tlb_reloads);
-        spinlock_release(&spinlock_reload);
+    else{
+        int spl = splhigh();
+        while(table->table[exte][inte].swapping) { //busy wait unless swap finished
+            splx(spl);
+            thread_yield();
+            spl = splhigh();
         }
-
+        if (table->table[exte][inte].swp) {  // swap in
+            spinlock_acquire(&spinlock_faults_from_disk);
+            inc_counter(page_faults_from_swap);
+            inc_counter(page_faults_disk);
+            spinlock_release(&spinlock_faults_from_disk);
+            splx(spl);
+            err = load_from_swap(&table->table[exte][inte]);
+        } else { //leggo da coremap
+            coremap_set_fixed(table->table[exte][inte].frame_no); //da questo momento in poi sino alla rscrittura in tlb 
+            splx(spl);
+            spinlock_acquire(&spinlock_reload);
+            inc_counter(tlb_reloads);
+            spinlock_release(&spinlock_reload);
+        }
+}
 
     if (err) {
-        if (!lock_hold) lock_release(table->pt_lock);
+        lock_release(table->pt_lock);
         return err;
     }
-    if (!lock_hold) lock_release(table->pt_lock);
+    lock_release(table->pt_lock);
 
     *frame = table->table[exte][inte].frame_no << 12;
     return 0;

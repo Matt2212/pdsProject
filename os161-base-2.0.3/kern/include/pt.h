@@ -15,15 +15,16 @@
 
 typedef struct
 {
-    unsigned int frame_no:20;
-    unsigned int valid:1;
-    unsigned int swp:1;
+    unsigned int frame_no : 20;
+    bool valid : 1;
+    bool swp : 1; //è in swap
+    bool swapping : 1; //è stato scelto coem vittima
 } pt_entry;
 
 typedef struct
 {
     pt_entry **table; 
-    struct lock* pt_lock;
+    struct lock* pt_lock; //per garantire accesso concorrente alla struttura dati da parte dei thread del processo
 
 } pt;
 

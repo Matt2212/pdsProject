@@ -132,13 +132,16 @@ common_prog(int nargs, char **args)
 		proc_destroy(proc);
 		return result;
 	}
+#if OPT_PAGING
+        int exit_code, pid = sys_waitpid(proc->p_pid, (userptr_t)&exit_code, 0);
+        kprintf("Process: %s, Pid: %d\nexited with exit code: %d\n", args[0], pid,exit_code);
+#endif
+        /*
+         * The new process will be destroyed when the program exits...
+         * once you write the code for handling that.
+         */
 
-	/*
-	 * The new process will be destroyed when the program exits...
-	 * once you write the code for handling that.
-	 */
-
-	return 0;
+        return 0;
 }
 
 /*

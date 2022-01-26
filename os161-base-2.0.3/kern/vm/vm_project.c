@@ -187,7 +187,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS ) {    // outside stack
-        kprintf("\n%s\n", strerror(EFAULT));
+        kprintf("\nout of segments%s\n", strerror(EFAULT));
         sys__exit(EFAULT);
     }
     
@@ -207,7 +207,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     
     int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
     if (err != 0) {
-        kprintf("\n%s\n", strerror(err));
+        kprintf("\n get_frame failed %s\n", strerror(err));
         sys__exit(err);
     }
     faultaddress &= PAGE_FRAME;
@@ -220,7 +220,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     for (i = 0; i < NUM_TLB; i++) {
         tlb_read(&ehi, &elo, i);
-        if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr)) { // se ho effettuato una load questa entry già esiste
+        if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr)) { // se ho effettuato una load questa entry potrebbe già esiste
             goto write_without_count;
         }
         if (elo & TLBLO_VALID) {
@@ -244,7 +244,7 @@ write_without_count:
         elo = paddr | TLBLO_DIRTY | TLBLO_VALID; 
     DEBUG(DB_VM, "vm_project: 0x%x -> 0x%x\n", faultaddress, paddr);
     tlb_write(ehi, elo, i);
-
+    coremap_set_unfixed(paddr >> 12);
     splx(spl);
     return 0;
 }

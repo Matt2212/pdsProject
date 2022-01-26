@@ -100,7 +100,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
     newas->active = true;
     // page_table_copy
     err = pt_copy(old->page_table, newas->page_table);
-    if (err) {
+    if (err != 0) {
         as_destroy(newas);
         *ret = NULL;
         return err;

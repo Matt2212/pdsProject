@@ -13,7 +13,7 @@ typedef struct {
     uint8_t refs[SWAP_MAX];
 } swap_file;
 
-
+struct lock* swap_lock;
 /**
  *
  * Functions:
@@ -35,6 +35,6 @@ int swap_set(vaddr_t address, unsigned int* index);
 void swap_inc_ref(unsigned int index);
 void swap_close(void);
 
-int load_from_swap(pt_entry* entry, struct lock* pt_lock);
+int load_from_swap(pt_entry* entry);
 
 #endif

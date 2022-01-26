@@ -1,19 +1,21 @@
 
 #include <types.h>
 #include <lib.h>
-#include <synch.h>
 #include <vm.h>
-#include <wchan.h>
+#include <spl.h>
 #include <swapfile.h>
 #include <coremap.h>
 #include <kern/errno.h>
+#include <thread.h>
+#include <vm_tlb.h>
+
+#define MAX_ATTEMPTS 5
 
 static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
 
-int is_swapping = 0;
-struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
+struct spinlock coremap_spinlock = SPINLOCK_INITIALIZER;
 
 static int get_victim() {
     static int prev_victim = 0;
@@ -26,6 +28,8 @@ static int get_victim() {
             loop = true;
     }
     prev_victim = victim;
+    coremap[victim].fixed = true;
+    coremap[victim].pt_entry->swapping = true;
     return victim;
 }
 
@@ -36,8 +40,7 @@ void coremap_create(unsigned int n_pages) {
 
 int coremap_bootstrap(paddr_t firstpaddr) {
     unsigned int i = 0;
-    pt_destroy_queue = wchan_create("pt_destroy_queue");
-    if (!coremap || !pt_destroy_queue)
+    if (!coremap)
         return false;
     
     first_page = firstpaddr / PAGE_SIZE;  // firstpaddr è l'indirizzo fisico del primo frame libero
@@ -62,14 +65,15 @@ int coremap_bootstrap(paddr_t firstpaddr) {
     return true;
 }
 
-static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struct lock* lock) {
+static paddr_t get_n_frames(unsigned int num, pt_entry* entry) {
     
     paddr_t addr = 0;
     uint32_t i = first_page, residual, page;
     bool found = false;
-    spinlock_acquire(&coremap_lock);
-    if(coremap == NULL){
-        spinlock_release(&coremap_lock);
+    int spl;
+    spl = splhigh();
+    if (coremap == NULL) {
+        splx(spl);
         return 0;
     }
     while (i < npages && !found) {
@@ -80,64 +84,39 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
     }
 
     if (!found && num != 1) {
-        spinlock_release(&coremap_lock);
-        panic(strerror(ENOMEM));
+        splx(spl);
         return 0;
     } else if (!found) {
         int err = 0;
-        unsigned int swp_index;
-        is_swapping = 1;  // le pt non possono essere distrutte
+        unsigned int swap_index;
         i = get_victim();
-        coremap[i].fixed = true;
+        splx(spl);
+
         if ((int)i == -1) {
-            spinlock_release(&coremap_lock);
-            panic(strerror(ENOMEM));
             return 0;
         }
-        spinlock_release(&coremap_lock);
 
-        //studia i casi in cui vi sia deadlock durante un uso normale
-
-        // swappa                                  //safe poiché le pt non possono essere distrutte
-        if(!lock_do_i_hold(coremap[i].pt_lock)) { //se il frame non e' mappato nella page_table del thread, che sta eseguendo il codice
-            // devo settare l'entry come in swap, quindi devo acquisire il lock della pt che possiede la entry
-            lock_acquire(coremap[i].pt_lock);
-            // eseguo lo swap-out
-            err = swap_set(PADDR_TO_KVADDR(i * PAGE_SIZE), &swp_index);
-            if (!err) {
-                coremap[i].pt_entry->swp = true;
-                coremap[i].pt_entry->frame_no = swp_index;
-            }
-            lock_release(coremap[i].pt_lock);
-        } else {
-            // eseguo lo swap-out
-            err = swap_set(PADDR_TO_KVADDR(i * PAGE_SIZE), &swp_index);
-            if(!err){
-                coremap[i].pt_entry->swp = true;
-                coremap[i].pt_entry->frame_no = swp_index;
-            }
-        }
-        if(err) {
-            kprintf("%s", strerror(err));
+        err = swap_set(PADDR_TO_KVADDR(i * PAGE_SIZE), &swap_index);
+        if (err) {
+            spl = splhigh();
+            coremap[i].fixed = false;
+            coremap[i].pt_entry->swapping = false;
+            splx(spl);
             return 0;
         }
-       
-        spinlock_acquire(&coremap_lock);
-        coremap[i].fixed = fixed;
+        invalidate_entry_by_paddr(coremap[i].pt_entry->frame_no << 12);
+        spl = splhigh();
+        coremap[i].pt_entry->frame_no = swap_index;
+        coremap[i].pt_entry->swp = true;
+        coremap[i].pt_entry->swapping = false;
         coremap[i].pt_entry = entry;
-        coremap[i].pt_lock = lock;
-        is_swapping = 0;
-        wchan_wakeall(pt_destroy_queue, &coremap_lock);
-        spinlock_release(&coremap_lock);
+        splx(spl);
         addr = (paddr_t)(i * PAGE_SIZE);
         bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
         return addr;
     }
-
     page = i;
     
-
-
     // page adesso conterrà il primo frame libero
     // aggiorno la tabella
     residual = coremap[page].nframes - num;
@@ -149,53 +128,55 @@ static paddr_t get_n_frames(unsigned int num, bool fixed, pt_entry* entry, struc
 
     for (i = page; i < page + num; i++){
         coremap[i].occ = true;
-        coremap[i].fixed = fixed;
+        coremap[i].fixed = true;
         coremap[i].pt_entry = entry;
-        coremap[i].pt_lock = lock;
     }
+    splx(spl);
     addr = (paddr_t)(page * PAGE_SIZE);
     bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
-    spinlock_release(&coremap_lock);
     return addr;    
-
 }
 
-paddr_t get_swappable_frame(pt_entry* entry, struct lock* lock) {
-    return get_n_frames(1, false, entry, lock);
+paddr_t get_swappable_frame(pt_entry* entry) {
+    paddr_t ret;
+    for (int i = 0; i < MAX_ATTEMPTS; i++) {
+        ret = get_n_frames(1, entry);
+        if (ret)
+            return ret;
+        thread_yield();
+    }
+    kprintf("Not enough space \n");
+    return 0;
 }
 
 paddr_t get_kernel_frame(unsigned int num) {
-    return get_n_frames(num, true, NULL, NULL);
+    paddr_t ret;
+    for (int i = 0; i < MAX_ATTEMPTS; i++){
+        ret = get_n_frames(num, NULL);
+        if (ret)
+            return ret;
+        thread_yield();
+    }
+    kprintf("Not enough space \n");
+    return 0;
 }
 
 void free_frame(paddr_t addr) {
 
     uint32_t i, next, page = addr / PAGE_SIZE, mysize;
 
-    //se distruggo la page table già posseggo la coremap_lock
-    bool lock_hold = spinlock_do_i_hold(&coremap_lock);
-    if(!lock_hold){
-        spinlock_acquire(&coremap_lock);
-        if(coremap == NULL){
-            spinlock_release(&coremap_lock);
-            return ;
-        }
-    }
-    
+    int spl = splhigh();
+
     if(coremap == NULL){
         return;
     }
-
     mysize = coremap[page].nframes;
     KASSERT(mysize>0);
-
     for (i = 0; i < mysize; i++) {
         coremap[page + i].occ = false;
         coremap[page + i].fixed = false;
         coremap[page + i].pt_entry = NULL;
-        coremap[page + i].pt_lock = NULL;
     }
-
     i = 0;
     next = coremap[i].nframes;
     while (next < npages) {
@@ -211,15 +192,22 @@ void free_frame(paddr_t addr) {
         i = next;
         next += coremap[next].nframes;
     }
-    if(!lock_hold)
-        spinlock_release(&coremap_lock);
+    splx(spl);
 }
 
 
 void coremap_shutdown() {
-    spinlock_acquire(&coremap_lock);
+    spinlock_acquire(&coremap_spinlock);
     npages = 0;
     coremap = NULL;    
     first_page = 0;
-    spinlock_release(&coremap_lock);
+    spinlock_release(&coremap_spinlock);
+}
+
+void coremap_set_fixed(unsigned int index) {
+    coremap[index].fixed = true;
+}
+
+void coremap_set_unfixed(unsigned int index) {
+    coremap[index].fixed = false;
 }

@@ -17,14 +17,11 @@ struct cm_entry {
     uint32_t fixed : 1;
     uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
     pt_entry* pt_entry;
-    struct lock* pt_lock;
 };
 
-struct spinlock coremap_lock; // utilizzato per rendere gli accessi alla struttura, thread safe.
+struct spinlock coremap_spinlock; // utilizzato per rendere gli accessi alla struttura, thread safe.
 
-int is_swapping;
 
-struct wchan* pt_destroy_queue;
 /**
  *
  *
@@ -53,7 +50,7 @@ void coremap_create(unsigned int npages);
 
 int coremap_bootstrap(paddr_t firstpaddr);
 
-paddr_t get_swappable_frame(pt_entry* entry, struct lock* lock);
+paddr_t get_swappable_frame(pt_entry* entry);
 
 paddr_t get_kernel_frame(unsigned int num);
 
@@ -61,4 +58,7 @@ void free_frame(paddr_t addr);
 
 void coremap_shutdown(void);
 
+void coremap_set_fixed(unsigned int index);
+
+void coremap_set_unfixed(unsigned int index);
 #endif

@@ -13,7 +13,6 @@
 
 #include <vm_stats.h>
 
-static struct lock* swap_lock;
 static swap_file* swap;
 static bool init = false;
 
@@ -139,19 +138,16 @@ void swap_close() {
 }
 
 //presuppongo di possedere il lock della page table
-int load_from_swap(pt_entry* entry, struct lock* pt_lock){
+int load_from_swap(pt_entry* entry){
 
     int err;
     paddr_t frame;    
     
 
     KASSERT(entry->swp);
-    KASSERT(lock_do_i_hold(pt_lock));
-    lock_acquire(swap_lock);
     //crea la get_swappable_fixed_frame
-    frame = get_swappable_frame(entry, pt_lock);
+    frame = get_swappable_frame(entry);
     if(frame == 0){
-        lock_release(swap_lock);
         return ENOMEM;
     }
 
@@ -161,8 +157,6 @@ int load_from_swap(pt_entry* entry, struct lock* pt_lock){
         entry->frame_no = frame >> 12;
         entry->swp = false;
     }
-    //rendi il frame unfixed
-    lock_release(swap_lock);
 
     return err;
 }

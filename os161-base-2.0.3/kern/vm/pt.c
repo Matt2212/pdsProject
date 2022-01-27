@@ -99,64 +99,62 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
     int err = 0;
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
-
+    bool lock_hold = false;
     static struct spinlock spinlock_reload = SPINLOCK_INITIALIZER;
 
     //se posseggo il lock significa che sto effettuando o una load o una swap-in, quindi l'entry nella page_table esiste già, quindi goto end
 
     KASSERT(fault_addr < MIPS_KSEG0);
 
-    if(lock_do_i_hold(table->pt_lock)){ //sono in fase di load, posseggo un frame fixed, quindi non può essere vittima di swap
+    if(lock_do_i_hold(table->pt_lock)){ //sono in fase di load
         KASSERT(table->table[exte] != NULL); // ho già una entry di secondo livello
         KASSERT(table->table[exte][inte].valid); //ho già ottenuto un frame
         KASSERT(table->table[exte][inte].frame_no != 0);
-        *frame = table->table[exte][inte].frame_no << 12;
-        return 0;
+        lock_hold = true;
     }
 
-    lock_acquire(table->pt_lock);
+    if (!lock_hold)lock_acquire(table->pt_lock);
     // inizializzazione riga di secondo livello
     if (table->table[exte] == NULL)
         err = init_rows(table, fault_addr);
     if (err) {
-        lock_release(table->pt_lock);
+        if (!lock_hold) lock_release(table->pt_lock);
         return err;
     }
     
     if (table->table[exte][inte].valid == false)
         err = load_frame(table, exte, inte, fault_addr);
-    else{
-        int spl = splhigh();
-        while(table->table[exte][inte].swapping) { //busy wait unless swap finished
-            splx(spl);
-            thread_yield();
-            spl = splhigh();
+
+    int spl = splhigh();
+    while(table->table[exte][inte].swapping) { //busy wait unless swap finished
+        splx(spl);
+        thread_yield();
+        spl = splhigh();
+    }
+    if (table->table[exte][inte].swp) {  // swap in
+        splx(spl);
+        err = load_from_swap(&table->table[exte][inte]);
+        if (!err) {
+            spinlock_acquire(&spinlock_faults_from_disk);
+            inc_counter(page_faults_from_swap);
+            inc_counter(page_faults_disk);
+            spinlock_release(&spinlock_faults_from_disk);
         }
-        if (table->table[exte][inte].swp) {  // swap in
-            splx(spl);
-            err = load_from_swap(&table->table[exte][inte]);
-            if (!err) {
-                spinlock_acquire(&spinlock_faults_from_disk);
-                inc_counter(page_faults_from_swap);
-                inc_counter(page_faults_disk);
-                spinlock_release(&spinlock_faults_from_disk);
-            }
-        } else { //leggo da coremap
-            coremap_set_fixed(table->table[exte][inte].frame_no); //da questo momento in poi sino alla rscrittura in tlb 
-            splx(spl);
-            spinlock_acquire(&spinlock_reload); // forse non serve se sono in splhigh
-            inc_counter(tlb_reloads);
-            spinlock_release(&spinlock_reload);
-        }
-}
+    } else { //leggo da coremap
+        coremap_set_fixed(table->table[exte][inte].frame_no); //da questo momento in poi sino alla rscrittura in tlb 
+        splx(spl);
+        spinlock_acquire(&spinlock_reload); // forse non serve se sono in splhigh
+        inc_counter(tlb_reloads);
+        spinlock_release(&spinlock_reload);
+    }
+
 
     if (err) {
-        lock_release(table->pt_lock);
+        if (!lock_hold) lock_release(table->pt_lock);
         return err;
     }
-    lock_release(table->pt_lock);
-
     *frame = table->table[exte][inte].frame_no << 12;
+    if (!lock_hold) lock_release(table->pt_lock);
     return 0;
 }
 

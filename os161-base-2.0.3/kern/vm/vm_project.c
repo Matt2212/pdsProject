@@ -221,7 +221,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     for (i = 0; i < NUM_TLB; i++) {
         tlb_read(&ehi, &elo, i);
         if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr)) { // se ho effettuato una load questa entry potrebbe già esiste
-            goto write_without_count;
+            goto write;
         }
         if (elo & TLBLO_VALID) {
             continue;
@@ -234,7 +234,6 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     inc_counter(tlb_faults_with_replace);
 write:
     inc_counter(tlb_faults);
-write_without_count:
     ehi = faultaddress;
     if (read_only && !as->ignore_permissions)
         elo = paddr | TLBLO_VALID;

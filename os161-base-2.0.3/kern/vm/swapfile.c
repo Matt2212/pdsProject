@@ -116,11 +116,11 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
     }
 
     
-    inc_counter(swap_file_writes);
     
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);
     err = VOP_WRITE(swap->file, &ku);
     *ret_index = index;
+    if (!err) inc_counter(swap_file_writes);
     if(!lock_hold)
         lock_release(swap_lock); //magari rilascialo prima della scrittura
     return err;

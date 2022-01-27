@@ -78,11 +78,12 @@ static int load_frame(pt* table, unsigned int exte, unsigned int inte, vaddr_t f
     table->table[exte][inte].valid = true;
     if (fault_addr < PROJECT_STACK_MIN_ADDRESS){     //l'indirizzo si trova al di fuori dello stack
         err = load_page(proc_getas(), fault_addr); 
-        
+        if (!err) {
         spinlock_acquire(&spinlock_faults_from_disk);
         inc_counter(page_faults_from_elf);
         inc_counter(page_faults_disk);
         spinlock_release(&spinlock_faults_from_disk);
+        }
     }
     else{
         spinlock_acquire(&spinlock_zeroed_stats);
@@ -132,16 +133,18 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
             spl = splhigh();
         }
         if (table->table[exte][inte].swp) {  // swap in
-            spinlock_acquire(&spinlock_faults_from_disk);
-            inc_counter(page_faults_from_swap);
-            inc_counter(page_faults_disk);
-            spinlock_release(&spinlock_faults_from_disk);
             splx(spl);
             err = load_from_swap(&table->table[exte][inte]);
+            if (!err) {
+                spinlock_acquire(&spinlock_faults_from_disk);
+                inc_counter(page_faults_from_swap);
+                inc_counter(page_faults_disk);
+                spinlock_release(&spinlock_faults_from_disk);
+            }
         } else { //leggo da coremap
             coremap_set_fixed(table->table[exte][inte].frame_no); //da questo momento in poi sino alla rscrittura in tlb 
             splx(spl);
-            spinlock_acquire(&spinlock_reload);
+            spinlock_acquire(&spinlock_reload); // forse non serve se sono in splhigh
             inc_counter(tlb_reloads);
             spinlock_release(&spinlock_reload);
         }
@@ -160,7 +163,7 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
 int pt_copy(pt* old, pt* new) {
     int i = 0;
 
-    lock_acquire(swap_lock);
+    lock_acquire(swap_lock); // se non esiste più questo lock metti splhigh
     for (; i < TABLE_SIZE; i++) {
         if (old->table[i] != NULL) {
             if (init_rows(new, i << 22)) {

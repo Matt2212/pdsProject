@@ -13,7 +13,7 @@ typedef struct {
     uint8_t refs[SWAP_MAX];
 } swap_file;
 
-struct lock* swap_lock;
+struct lock* swap_lock; // se non serve levalo
 /**
  *
  * Functions:

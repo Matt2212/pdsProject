@@ -143,8 +143,6 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
     } else { //leggo da coremap
         if(!coremap_set_fixed(table->table[exte][inte].frame_no)) //da questo momento in poi sino alla scrittura in tlb il frame non è swappable
             inc_counter(tlb_reloads);
-        //spinlock_acquire(&spinlock_reload);  
-        //spinlock_release(&spinlock_reload);
         splx(spl);
     }
 

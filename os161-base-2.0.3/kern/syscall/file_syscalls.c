@@ -39,17 +39,14 @@ sys_read(int fd, userptr_t buf_ptr, size_t size)
 {
   int i;
   char *p = (char *)buf_ptr;
-  static struct spinlock read_lock = SPINLOCK_INITIALIZER;
-  if (fd!=STDIN_FILENO) {
+  if ( fd != STDIN_FILENO) {
     kprintf("sys_read supported only to stdin\n");
     return -1;
   }
-  spinlock_acquire(&read_lock);
   for (i = 0; i < (int)size; i++) {
       p[i] = getch();
       if (p[i] < 0)
           return i;
   }
-  spinlock_release(&read_lock);
   return (int)size;
 }

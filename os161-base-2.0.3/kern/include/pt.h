@@ -54,7 +54,7 @@ typedef struct
 
 pt* pt_create(void);
 
-int pt_get_frame_from_page(pt* table, vaddr_t addr, paddr_t* frame);
+int pt_get_frame_from_page(pt* table, vaddr_t addr, paddr_t* frame_addr);
 
 int pt_copy(pt* old, pt* new);
 

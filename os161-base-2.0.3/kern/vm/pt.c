@@ -72,7 +72,7 @@ static int init_rows(pt* table, unsigned int index) {
 static int load_frame(pt* table, unsigned int exte, unsigned int inte, vaddr_t fault_addr) {
     static struct spinlock spinlock_zeroed_stats = SPINLOCK_INITIALIZER;
     int err = 0;
-    table->table[exte][inte].frame_no = get_swappable_frame(&table->table[exte][inte]) >> 12;
+    table->table[exte][inte].frame_no = get_user_frame(&table->table[exte][inte]) >> 12;
     if (table->table[exte][inte].frame_no == 0)
         return ENOMEM;
     table->table[exte][inte].valid = true;
@@ -160,8 +160,8 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
 
 int pt_copy(pt* old, pt* new) {
     int i = 0;
-
-    lock_acquire(swap_lock); // se non esiste più questo lock metti splhigh
+    lock_acquire(old->pt_lock);
+    lock_acquire(swap_lock);  
     for (; i < TABLE_SIZE; i++) {
         if (old->table[i] != NULL) {
             if (init_rows(new, i << 22)) {
@@ -179,7 +179,7 @@ int pt_copy(pt* old, pt* new) {
                     }
                     else {
                         int spl;
-                        new->table[i][j].frame_no = get_swappable_frame(&new->table[i][j]) >> 12;
+                        new->table[i][j].frame_no = get_user_frame(&new->table[i][j]) >> 12;
                         if (new->table[i][j].frame_no == 0) {
                             lock_release(swap_lock);
                             return ENOMEM;
@@ -194,5 +194,6 @@ int pt_copy(pt* old, pt* new) {
         }
     }
     lock_release(swap_lock);
+    lock_release(old->pt_lock);
     return 0;
 }

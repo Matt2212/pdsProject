@@ -10,7 +10,7 @@ int tlb_get_rr_victim(void) {
 }
 
 void invalidate_entry_by_paddr(paddr_t paddr) {
-    int spl = splhigh(), i;
+    int i;
 
     for (i = 0; i < NUM_TLB; i++) {
         uint32_t ehi, elo;
@@ -20,6 +20,4 @@ void invalidate_entry_by_paddr(paddr_t paddr) {
             break;
         }
     }
-
-    splx(spl);
 }

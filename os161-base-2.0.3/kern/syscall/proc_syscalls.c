@@ -31,6 +31,7 @@ sys__exit(int status)
 #if OPT_PAGING
   struct proc *p = curproc;
   p->p_status = status & 0xff; /* just lower 8 bits returned */
+  as_deactivate();
   proc_remthread(curthread);
   proc_signal_end(p);
 #else

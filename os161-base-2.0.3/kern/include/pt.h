@@ -18,7 +18,7 @@ typedef struct
     unsigned int frame_no : 20;
     bool valid : 1;
     bool swp : 1; //è in swap
-    bool swapping : 1; //è stato scelto coem vittima
+    bool swapping : 1; //è stato scelto come vittima
 } pt_entry;
 
 typedef struct
@@ -41,12 +41,12 @@ typedef struct
 
 /**
  *
- * Functions:
+ * Funzioni:
  *     pt_create  -  Crea la page table.
  *
- *     pt_get_frame_from_page  -  Risolvere mediante la Page Table la corrispondenza tra frame e page, ritorna 0 se non vi sono stati errori durante il processo.
+ *     pt_get_frame_from_page  -  Risolve, mediante la Page Table rappresentata dalla pt table, la corrispondenza tra frame il cui indirizzo fisico sarà scritto nel parametro frame e page il cui indirizzo logico viene passato mediante il parametro addr, ritorna 0 se non vi sono stati errori durante il processo.
  *
- *     int pt_copy - crea una copia profonda della papge_table
+ *     int pt_copy - crea una copia profonda della page_table
  *
  *     pt_destroy  -  Distrugge la page table
  *

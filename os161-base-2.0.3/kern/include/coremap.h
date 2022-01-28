@@ -19,9 +19,6 @@ struct cm_entry {
     pt_entry* pt_entry;
 };
 
-struct spinlock coremap_spinlock; // utilizzato per rendere gli accessi alla struttura, thread safe.
-
-
 /**
  *
  *
@@ -33,7 +30,7 @@ struct spinlock coremap_spinlock; // utilizzato per rendere gli accessi alla str
  *
  *     coremap_bootstrap  - Inizializza la struttura, firstpaddr è l'indirizzo fisico dell'inizio del primo frame libero.
  *
- *     get_swappable_frame  -  Restituisce l'indirizzo fisico dell'inizio di un frame libero.
+ *     get_user_frame  -  Restituisce l'indirizzo fisico dell'inizio di un frame libero.
  *     Nel caso nessun frame sia libero, effettua lo swap out di un frame vittima. Una volta trovato, il numero di frame viene
  *     scritto nella struct pt_entry.
  *
@@ -44,13 +41,17 @@ struct spinlock coremap_spinlock; // utilizzato per rendere gli accessi alla str
  *
  *     coremap_shutdown - Termina il funzionamento della coremap.
  *
+ *     coremap_set_fixed -  Imposta il frame rappresentato dall'elemento in posizione index come adatto allo swap out.
+ *
+ *     coremap_set_fixed - Imposta il frame rappresentato dall'elemento in posizione index come non adatto allo swap out.
+ *
  */
 
 void coremap_create(unsigned int npages);
 
-int coremap_bootstrap(paddr_t firstpaddr);
+bool coremap_bootstrap(paddr_t firstpaddr);
 
-paddr_t get_swappable_frame(pt_entry* entry);
+paddr_t get_user_frame(pt_entry* entry);
 
 paddr_t get_kernel_frame(unsigned int num);
 

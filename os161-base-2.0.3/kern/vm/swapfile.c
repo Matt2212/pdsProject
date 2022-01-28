@@ -44,32 +44,22 @@ int swap_get(vaddr_t address, unsigned int index) {
     int err = 0;
     
     bool lock_hold = lock_do_i_hold(swap_lock);
-    if(!lock_hold){
-        lock_acquire(swap_lock);
-        if (!init) {
-            lock_release(swap_lock);
-            return EPERM;
-        }
-        KASSERT(swap->refs[index] > 0);
-        swap->refs[index]--;
-        //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in, e.g. durante una pt destroy
-        if ((void *)address == NULL) {
-            lock_release(swap_lock);
-            return 0;
-        }
-    }
-    else {
-        if (!init) {
-            return EPERM;
-        }
-        KASSERT(swap->refs[index] > 0);
-        swap->refs[index]--;
-        //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in
-        if ((void *)address == NULL) {
-            return 0;
-        }
+    if(!lock_hold) lock_acquire(swap_lock);
+
+    if (!init) {
+        if (!lock_hold) lock_release(swap_lock);
+        return EPERM;
     }
 
+    KASSERT(swap->refs[index] > 0);
+    swap->refs[index]--;
+    //se address è null significa che voglio liberare la pagina dello swap e non fare swap-in, e.g. durante una pt destroy
+    
+    if ((void *)address == NULL) {
+        if (!lock_hold) lock_release(swap_lock);
+        return 0;
+    }
+    
 
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_READ);
     err = VOP_READ(swap->file, &ku);
@@ -88,34 +78,18 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
     int err = 0;
     
     bool lock_hold = lock_do_i_hold(swap_lock);
-    if(!lock_hold){
-        lock_acquire(swap_lock);
-        if (!init) {
-            lock_release(swap_lock);
-            return EPERM;
-        }
-        for(; index < SWAP_MAX && swap->refs[index] > 0; index++);   
-        if (index == SWAP_MAX) {
-            lock_release(swap_lock);
-            panic("Out of swap space");
-            return ENOSPC;
-        }
-        swap->refs[index] = 1;
+    if(!lock_hold) lock_acquire(swap_lock);
+    if (!init) {
+        if (!lock_hold) lock_release(swap_lock);
+        return EPERM;
     }
-    else {
-        if (!init) {
-            return EPERM;
-        }
-        for(; index < SWAP_MAX && swap->refs[index] > 0; index++);   
-        if (index == SWAP_MAX) {
-            lock_release(swap_lock);
-            panic("Out of swap space");
-            return ENOSPC;
-        }
-        swap->refs[index] = 1;
+    for(; index < SWAP_MAX && swap->refs[index] > 0; index++);   
+    if (index == SWAP_MAX) {
+        if (!lock_hold)  lock_release(swap_lock);
+        panic("Out of swap space");
+        return ENOSPC;
     }
-
-    
+    swap->refs[index] = 1;
     
     uio_kinit(&iov, &ku, (void *)address, PAGE_SIZE, index*PAGE_SIZE, UIO_WRITE);
     err = VOP_WRITE(swap->file, &ku);
@@ -145,7 +119,7 @@ int load_from_swap(pt_entry* entry){
 
     KASSERT(entry->swp);
     //crea la get_swappable_fixed_frame
-    frame = get_swappable_frame(entry);
+    frame = get_user_frame(entry);
     if(frame == 0){
         return ENOMEM;
     }

@@ -15,7 +15,6 @@ static struct cm_entry* coremap = NULL;
 static unsigned int npages = 0;
 static unsigned int first_page = 0;
 
-struct spinlock coremap_spinlock = SPINLOCK_INITIALIZER;
 
 static int get_victim() {
     static int prev_victim = 0;
@@ -38,7 +37,7 @@ void coremap_create(unsigned int n_pages) {
     coremap = kmalloc(npages * sizeof(struct cm_entry));
 }
 
-int coremap_bootstrap(paddr_t firstpaddr) {
+bool coremap_bootstrap(paddr_t firstpaddr) {
     unsigned int i = 0;
     if (!coremap)
         return false;
@@ -133,11 +132,11 @@ static paddr_t get_n_frames(unsigned int num, pt_entry* entry) {
     }
     splx(spl);
     addr = (paddr_t)(page * PAGE_SIZE);
-    bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
+    bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE*num);
     return addr;    
 }
 
-paddr_t get_swappable_frame(pt_entry* entry) {
+paddr_t get_user_frame(pt_entry* entry) {
     paddr_t ret;
     for (int i = 0; i < MAX_ATTEMPTS; i++) {
         ret = get_n_frames(1, entry);
@@ -197,11 +196,9 @@ void free_frame(paddr_t addr) {
 
 
 void coremap_shutdown() {
-    spinlock_acquire(&coremap_spinlock);
     npages = 0;
     coremap = NULL;    
     first_page = 0;
-    spinlock_release(&coremap_spinlock);
 }
 
 void coremap_set_fixed(unsigned int index) {

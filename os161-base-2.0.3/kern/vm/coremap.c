@@ -103,8 +103,8 @@ static paddr_t get_n_frames(unsigned int num, pt_entry* entry) {
             splx(spl);
             return 0;
         }
-        invalidate_entry_by_paddr(coremap[i].pt_entry->frame_no << 12);
         spl = splhigh();
+        invalidate_entry_by_paddr(coremap[i].pt_entry->frame_no << 12);
         coremap[i].pt_entry->frame_no = swap_index;
         coremap[i].pt_entry->swp = true;
         coremap[i].pt_entry->swapping = false;

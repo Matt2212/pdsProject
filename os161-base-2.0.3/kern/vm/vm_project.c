@@ -187,7 +187,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS ) {    // outside stack
-        kprintf("\nout of segments%s\n", strerror(EFAULT));
+        kprintf("\nThe address: %p, is out of the defined memory segments %s\n", (void *)faultaddress, strerror(EFAULT));
         sys__exit(EFAULT);
     }
     
@@ -196,7 +196,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     switch (faulttype) {
         case VM_FAULT_READONLY:
-            kprintf("\n%s\nAttempt to write into a read-only memory region: 0x%x\n", strerror(EFAULT), faultaddress);
+            kprintf("\n%s\nAttempt to write into a read-only memory segment: %p\n", strerror(EFAULT), (void *) faultaddress);
             sys__exit(EFAULT);
         case VM_FAULT_READ:
         case VM_FAULT_WRITE:

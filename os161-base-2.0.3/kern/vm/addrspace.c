@@ -95,7 +95,7 @@ int as_copy(struct addrspace *old, struct addrspace **ret) {
         newas->segments[i] = old->segments[i];
 
     newas->file = old->file;
-    VOP_INCREF(old->file);
+    VOP_INCREF(old->file); //incremento dei riferimenti al vnode rappresentante il file eseguibile.
     newas->ignore_permissions = old->ignore_permissions;
     newas->active = true;
     // page_table_copy

@@ -122,9 +122,17 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
         return err;
     }
     
-    if (table->table[exte][inte].valid == false)
+    if (table->table[exte][inte].valid == false) {
         err = load_frame(table, exte, inte, fault_addr);
-
+        if (err) {
+            lock_release(table->pt_lock);
+            return err;
+        }
+        //il frame è fixed in quanto appena uscito da una load quindi sono sicuro che nessuno abbia effettuato swap out
+        *frame_addr = table->table[exte][inte].frame_no << 12;
+        lock_release(table->pt_lock);
+        return 0;
+    }
     int spl = splhigh();
     while(table->table[exte][inte].swapping) { //busy wait unless swap finished
         splx(spl);
@@ -141,8 +149,8 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
             spinlock_release(&spinlock_faults_from_disk);
         }
     } else { //leggo da coremap
-        if(!coremap_set_fixed(table->table[exte][inte].frame_no)) //da questo momento in poi sino alla scrittura in tlb il frame non è swappable
-            inc_counter(tlb_reloads);
+        coremap_set_fixed(table->table[exte][inte].frame_no);  // da questo momento in poi sino alla scrittura in tlb il frame non è swappable
+        inc_counter(tlb_reloads);
         splx(spl);
     }
 

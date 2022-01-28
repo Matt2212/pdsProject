@@ -242,7 +242,8 @@ write:
         elo = paddr | TLBLO_DIRTY | TLBLO_VALID; 
     DEBUG(DB_VM, "vm_project: 0x%x -> 0x%x\n", faultaddress, paddr);
     tlb_write(ehi, elo, i);
-    coremap_set_unfixed(paddr >> 12);
+    if (!as->ignore_permissions) // se sono in fase di load il frame non è swappable
+        coremap_set_unfixed(paddr >> 12);
     splx(spl);
     return 0;
 }

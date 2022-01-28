@@ -59,7 +59,7 @@ void free_frame(paddr_t addr);
 
 void coremap_shutdown(void);
 
-bool coremap_set_fixed(unsigned int index);
+void coremap_set_fixed(unsigned int index);
 
 void coremap_set_unfixed(unsigned int index);
 #endif

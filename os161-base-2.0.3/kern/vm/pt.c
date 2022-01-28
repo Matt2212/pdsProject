@@ -94,13 +94,13 @@ static int load_frame(pt* table, unsigned int exte, unsigned int inte, vaddr_t f
     return err;
 }
 
-int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
+int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
     unsigned int exte, inte;
     int err = 0;
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
     bool lock_hold = false;
-    static struct spinlock spinlock_reload = SPINLOCK_INITIALIZER;
+    //static struct spinlock spinlock_reload = SPINLOCK_INITIALIZER;
 
     //se posseggo il lock significa che sto effettuando o una load o una swap-in, quindi l'entry nella page_table esiste già, quindi goto end
 
@@ -141,19 +141,18 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame) {
             spinlock_release(&spinlock_faults_from_disk);
         }
     } else { //leggo da coremap
-        coremap_set_fixed(table->table[exte][inte].frame_no); //da questo momento in poi sino alla rscrittura in tlb 
+        if(!coremap_set_fixed(table->table[exte][inte].frame_no)) //da questo momento in poi sino alla scrittura in tlb il frame non è swappable
+            inc_counter(tlb_reloads);
+        //spinlock_acquire(&spinlock_reload);  
+        //spinlock_release(&spinlock_reload);
         splx(spl);
-        spinlock_acquire(&spinlock_reload); // forse non serve se sono in splhigh
-        inc_counter(tlb_reloads);
-        spinlock_release(&spinlock_reload);
     }
-
 
     if (err) {
         if (!lock_hold) lock_release(table->pt_lock);
         return err;
     }
-    *frame = table->table[exte][inte].frame_no << 12;
+    *frame_addr = table->table[exte][inte].frame_no << 12;
     if (!lock_hold) lock_release(table->pt_lock);
     return 0;
 }

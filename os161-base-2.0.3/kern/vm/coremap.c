@@ -201,8 +201,10 @@ void coremap_shutdown() {
     first_page = 0;
 }
 
-void coremap_set_fixed(unsigned int index) {
+bool coremap_set_fixed(unsigned int index) {
+    bool old_value = coremap[index].fixed;
     coremap[index].fixed = true;
+    return old_value;
 }
 
 void coremap_set_unfixed(unsigned int index) {

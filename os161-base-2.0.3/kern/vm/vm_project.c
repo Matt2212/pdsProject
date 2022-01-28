@@ -221,6 +221,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     for (i = 0; i < NUM_TLB; i++) {
         tlb_read(&ehi, &elo, i);
         if (ehi == faultaddress && ((elo & PAGE_FRAME) == paddr)) { // se ho effettuato una load questa entry potrebbe già esiste
+            inc_counter(tlb_faults_with_replace);
             goto write;
         }
         if (elo & TLBLO_VALID) {

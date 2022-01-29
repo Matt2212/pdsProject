@@ -62,7 +62,10 @@ runprogram(char *progname)
 	/* Open the file. */
 	result = vfs_open(progname, O_RDONLY, 0, &v);
 	if (result) {
-		return result;
+            struct proc* p = curthread->t_proc;
+            proc_remthread(curthread);
+            proc_signal_end(p);
+            return result;
 	}
 
 	/* We should be a new process. */

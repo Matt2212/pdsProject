@@ -9,6 +9,8 @@
 #include <thread.h>
 #include <vm_tlb.h>
 
+#include <current.h>
+
 #define MAX_ATTEMPTS 5
 
 static struct cm_entry* coremap = NULL;
@@ -144,7 +146,7 @@ paddr_t get_user_frame(pt_entry* entry) {
             return ret;
         thread_yield();
     }
-    kprintf("Not enough space \n");
+    kprintf("get_user_frame: Not enough space \n");
     return 0;
 }
 
@@ -156,7 +158,7 @@ paddr_t get_kernel_frame(unsigned int num) {
             return ret;
         thread_yield();
     }
-    kprintf("Not enough space \n");
+    kprintf("get_user_frame: Not enough space \n");
     return 0;
 }
 
@@ -202,9 +204,11 @@ void coremap_shutdown() {
 }
 
 void coremap_set_fixed(unsigned int index) {
+    KASSERT(curthread->t_iplhigh_count > 0);
     coremap[index].fixed = true;
 }
 
 void coremap_set_unfixed(unsigned int index) {
+    KASSERT(curthread->t_iplhigh_count > 0);
     coremap[index].fixed = false;
 }

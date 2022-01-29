@@ -21,29 +21,25 @@ struct cm_entry {
 
 /**
  *
- *
- *
- *
  * Funzioni:
  *
  *     coremap_create - Crea una coremap (array di struct cm_entry), di dimensione npages.
  *
- *     coremap_bootstrap  - Inizializza la struttura, firstpaddr è l'indirizzo fisico dell'inizio del primo frame libero.
+ *     coremap_bootstrap - Inizializza la struttura, il parametro firstpaddr rappresenta l'indirizzo fisico dell'inizio del primo frame libero.
  *
- *     get_user_frame  -  Restituisce l'indirizzo fisico dell'inizio di un frame libero.
- *     Nel caso nessun frame sia libero, effettua lo swap out di un frame vittima. Una volta trovato, il numero di frame viene
- *     scritto nella struct pt_entry.
+ *     get_user_frame -  Restituisce l'indirizzo fisico dell'inizio di un frame libero.
+ *     Nel caso nessun frame sia libero, effettua lo swap-out di un frame vittima. Una volta trovato, il corrispettivo elemento nell’array coremap conterrà il valore descritto dal parametro entry.
  *
  *     get_kernel_frame - Restituisce l'indirizzo fisico dell'inizio del blocco di frame liberi contigui di dimensione num.
- *     Nel caso in cui num sia 1, e non vi siano frame liberi, viene effettuato lo swap out di un frame vittima.
+ *     Nel caso in cui il parametro num valga 1, e non vi siano frame liberi, viene effettuato lo swap-out di un frame vittima.
  *
- *     free_frame  -  Marca il frame o la sequenza di frame contigui, che iniziano dall'indirizzo fisico addr, come liberi.
+ *     free_frame - Marca il frame o la sequenza di frame contigui, che iniziano dall'indirizzo fisico addr, come liberi. Durante questa fase gli interrupt vengono disabilitati per garantire l’atomicità dell’operazione.
  *
  *     coremap_shutdown - Termina il funzionamento della coremap.
  *
- *     coremap_set_fixed -  Imposta il frame rappresentato dall'elemento in posizione index come adatto allo swap out.
+ *     coremap_set_fixed - Imposta il frame rappresentato dall'elemento in posizione index come adatto allo swap-out.
  *
- *     coremap_set_fixed - Imposta il frame rappresentato dall'elemento in posizione index come non adatto allo swap out.
+ *     coremap_set_fixed - Imposta il frame rappresentato dall'elemento in posizione index come non adatto allo-swap out.
  *
  */
 

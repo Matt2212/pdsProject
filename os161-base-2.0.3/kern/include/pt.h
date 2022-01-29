@@ -42,13 +42,13 @@ typedef struct
 /**
  *
  * Funzioni:
- *     pt_create  -  Crea la page table.
+ *     pt_create - Crea la Page Table e la restituisce.
  *
- *     pt_get_frame_from_page  -  Risolve, mediante la Page Table rappresentata dalla pt table, la corrispondenza tra frame il cui indirizzo fisico sarà scritto nel parametro frame e page il cui indirizzo logico viene passato mediante il parametro addr, ritorna 0 se non vi sono stati errori durante il processo.
+ *     pt_get_frame_from_page  - Trova, mediante la Page Table table, l’indirizzo del frame corrispondente alla pagina che ha come indirizzo logico fault_addr e lo scrive nel parametro frame_addr; se il frame non è presente in memoria lo carica da memoria secondaria tramite la funzione load_frame; ritorna 0 se non vi sono stati errori durante questo processo.
  *
- *     int pt_copy - crea una copia profonda della page_table
+ *     pt_copy - Crea una copia profonda della Page Table old in un'altra già creata e passata tramite il parametro new; ritorna 0 se non vi sono stati errori durante la copia.
  *
- *     pt_destroy  -  Distrugge la page table
+ *     pt_destroy  -  Distrugge la page table.
  *
  */
 

@@ -21,13 +21,13 @@ int swap_init() {
     char name[] = "emu0:/SWAPFILE";
     swap = kmalloc(sizeof(swap_file));
     if (swap == NULL) {
-        panic("OUT OF MEMORY");
+        panic("swap_init: OUT OF MEMORY");
         return ENOMEM;
     }
     swap_lock = lock_create("swap_lock");
     if (swap_lock == NULL) {
         kfree(swap);
-        panic("OUT OF MEMORY");
+        panic("swap_init: OUT OF MEMORY");
         return ENOMEM;
     }
     lock_acquire(swap_lock);
@@ -86,7 +86,7 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
     for(; index < SWAP_MAX && swap->refs[index] > 0; index++);   
     if (index == SWAP_MAX) {
         if (!lock_hold)  lock_release(swap_lock);
-        panic("Out of swap space");
+        panic("swap_init: Out of swap space");
         return ENOSPC;
     }
     swap->refs[index] = 1;

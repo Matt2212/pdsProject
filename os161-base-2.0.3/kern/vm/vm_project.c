@@ -80,14 +80,14 @@ void vm_bootstrap(void) {
     coremap_create(npages);
     spinlock_acquire(&vm_lock);
     if (!coremap_bootstrap(ram_getfirstfree())) {
-        panic("No space left on the device to allocate the coremap table\n");
+        panic("vm_bootstrap: No space left on the device to allocate the coremap table\n");
         return;
     }
     init = true;
     spinlock_release(&vm_lock);
     err = swap_init();
     if (err) {
-        panic("Error during swap init: %s\n", strerror(err));
+        panic("vm_bootstrap: Error during swap init: %s\n", strerror(err));
         return;
     }
 }
@@ -146,14 +146,14 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     struct addrspace *as;
 
     spinlock_acquire(&vm_lock);
-    if(!init){                                                  // qualcuno ha chiamato shutdown, quindi esco
+    if(!init){                                                  
         spinlock_release(&vm_lock);
         thread_exit();
         panic("thread_exit returned (should not happen)\n");
     }
     spinlock_release(&vm_lock);
     if( faultaddress == (vaddr_t) NULL || faultaddress >= (vaddr_t) MIPS_KSEG0){
-        kprintf("\n%s\n", strerror(EFAULT));
+        kprintf("\nvm_fault: %s\n", strerror(EFAULT));
         sys__exit(EFAULT);
     }
     
@@ -175,7 +175,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
          * kernel fault early in boot.
          */
         thread_exit();
-        panic("thread_exit returned (should not happen)\n");
+        panic("vm_fault: thread_exit returned (should not happen)\n");
         return EFAULT;
     }
     
@@ -187,7 +187,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     }
 
     if ( e_fault && faultaddress < PROJECT_STACK_MIN_ADDRESS ) {    // outside stack
-        kprintf("\nThe address: %p, is out of the defined memory segments %s\n", (void *)faultaddress, strerror(EFAULT));
+        kprintf("\nvm_fault: %s\nThe address: %p, is out of the defined memory segments\n", strerror(EFAULT), (void *)faultaddress);
         sys__exit(EFAULT);
     }
     
@@ -196,7 +196,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
 
     switch (faulttype) {
         case VM_FAULT_READONLY:
-            kprintf("\n%s\nAttempt to write into a read-only memory segment: %p\n", strerror(EFAULT), (void *) faultaddress);
+            kprintf("\nvm_fault: %s\nAttempt to write into a read-only memory segment: %p\n", strerror(EFAULT), (void *)faultaddress);
             sys__exit(EFAULT);
         case VM_FAULT_READ:
         case VM_FAULT_WRITE:
@@ -207,7 +207,7 @@ int vm_fault(int faulttype, vaddr_t faultaddress) {
     
     int err = pt_get_frame_from_page(as->page_table, faultaddress, &paddr);
     if (err != 0) {
-        kprintf("\n get_frame failed %s\n", strerror(err));
+        kprintf("\nvm_fault: get_frame failed %s\n", strerror(err));
         sys__exit(err);
     }
     faultaddress &= PAGE_FRAME;

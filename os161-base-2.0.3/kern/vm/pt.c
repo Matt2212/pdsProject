@@ -63,7 +63,7 @@ static int init_rows(pt* table, unsigned int index) {
     index = GET_EXT_INDEX(index);
     table->table[index] = kmalloc(sizeof(pt_entry)*TABLE_SIZE);
     if (table->table[index] == NULL) {
-        kprintf("No space left for pt creation \n");
+        kprintf("init_rows: No space left for pt entry creation \n");
         return ENOMEM;
     }
     return 0;
@@ -100,9 +100,7 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
     exte = GET_EXT_INDEX(fault_addr);
     inte = GET_INT_INDEX(fault_addr);
     bool lock_hold = false;
-    //static struct spinlock spinlock_reload = SPINLOCK_INITIALIZER;
 
-    //se posseggo il lock significa che sto effettuando o una load o una swap-in, quindi l'entry nella page_table esiste già, quindi goto end
 
     KASSERT(fault_addr < MIPS_KSEG0);
 
@@ -128,18 +126,18 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
             lock_release(table->pt_lock);
             return err;
         }
-        //il frame è fixed in quanto appena uscito da una load quindi sono sicuro che nessuno abbia effettuato swap out
+        //il frame è fixed in quanto appena uscito da una load quindi sono sicuro che nessuno abbia effettuato swap-out
         *frame_addr = table->table[exte][inte].frame_no << 12;
         lock_release(table->pt_lock);
         return 0;
     }
     int spl = splhigh();
-    while(table->table[exte][inte].swapping) { //busy wait unless swap finished
+    while(table->table[exte][inte].swapping) { //busy wait finché non termina la procedura di swap-out della pagina
         splx(spl);
         thread_yield();
         spl = splhigh();
     }
-    if (table->table[exte][inte].swp) {  // swap in
+    if (table->table[exte][inte].swp) {  // swap-in
         splx(spl);
         err = load_from_swap(&table->table[exte][inte]);
         if (!err) {
@@ -148,7 +146,7 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
             inc_counter(page_faults_disk);
             spinlock_release(&spinlock_faults_from_disk);
         }
-    } else { //leggo da coremap
+    } else { //imposto il frame come fixed
         coremap_set_fixed(table->table[exte][inte].frame_no);  // da questo momento in poi sino alla scrittura in tlb il frame non è swappable
         inc_counter(tlb_reloads);
         splx(spl);

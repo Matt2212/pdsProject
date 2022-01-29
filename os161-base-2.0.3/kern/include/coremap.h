@@ -13,10 +13,10 @@
  */
 
 struct cm_entry {
-    uint32_t occ : 1;
-    uint32_t fixed : 1;
-    uint32_t nframes : 20;  // quanti frame contigui a questo sono stati allocati o sono liberi
-    pt_entry* pt_entry;
+    uint32_t occ : 1;      /* indica se il frame sia occupato o meno */
+    uint32_t fixed : 1;    /* indica se si possa effettuare swap-out del frame */
+    uint32_t nframes : 20; /* quanti frame contigui a questo sono stati allocati o sono liberi */
+    pt_entry* pt_entry;    /* entry della Page Table che contiene questo frame, tale campo è diverso da NULL se il frame corrispondente appartiene a un address space */
 };
 
 /**
@@ -28,10 +28,10 @@ struct cm_entry {
  *     coremap_bootstrap - Inizializza la struttura, il parametro firstpaddr rappresenta l'indirizzo fisico dell'inizio del primo frame libero.
  *
  *     get_user_frame -  Restituisce l'indirizzo fisico dell'inizio di un frame libero.
- *     Nel caso nessun frame sia libero, effettua lo swap-out di un frame vittima. Una volta trovato, il corrispettivo elemento nell’array coremap conterrà il valore descritto dal parametro entry.
+ *                       Nel caso nessun frame sia libero, effettua lo swap-out di un frame vittima. Una volta trovato, il corrispettivo elemento nell’array coremap conterrà il valore descritto dal parametro entry.
  *
  *     get_kernel_frame - Restituisce l'indirizzo fisico dell'inizio del blocco di frame liberi contigui di dimensione num.
- *     Nel caso in cui il parametro num valga 1, e non vi siano frame liberi, viene effettuato lo swap-out di un frame vittima.
+ *                        Nel caso in cui il parametro num valga 1, e non vi siano frame liberi, viene effettuato lo swap-out di un frame vittima.
  *
  *     free_frame - Marca il frame o la sequenza di frame contigui, che iniziano dall'indirizzo fisico addr, come liberi. Durante questa fase gli interrupt vengono disabilitati per garantire l’atomicità dell’operazione.
  *

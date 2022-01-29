@@ -57,10 +57,10 @@ struct vnode;
 
 #if OPT_PAGING 
 struct segment {
-    uint32_t p_vaddr;     /* indirizzo base del segmento */
-    uint32_t p_file_start;    /* rappresenta l'offset del segmento nel file */
-    uint32_t p_file_end;  /* byte successivo all'ultimo byte del segmento nel file eseguibile */
-    uint32_t p_memsz;     /* dimensione in byte del segmento in memoria */
+    uint32_t p_vaddr;      /* indirizzo base del segmento */
+    uint32_t p_file_start; /* rappresenta l'offset del segmento nel file */
+    uint32_t p_file_end;   /* byte successivo all'ultimo byte del segmento nel file eseguibile */
+    uint32_t p_memsz;      /* dimensione in byte del segmento in memoria */
     uint32_t readable : 1; /* permessi */
     uint32_t writable : 1;
     uint32_t executable : 1;
@@ -79,7 +79,7 @@ struct addrspace {
 
     struct segment segments[N_SEGMENTS]; /* tabella dei segmenti */
     union {
-        int index;
+        int index; /* indice utilizzato durante il caricamento dei segmenti */
         int ignore_permissions;
     };
 
@@ -143,6 +143,8 @@ struct addrspace {
  *                (Normally called *after* as_complete_load().) Hands
  *                back the initial stack pointer for the new process.
  *
+ *    load_page - carica la pagina contenente l'indirizzo user vaddr.
+ *
  * Note that when using dumbvm, addrspace.c is not used and these
  * functions are found in dumbvm.c.
  */
@@ -168,33 +170,18 @@ int as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
  *    load_elf - load an ELF user program executable into the current
  *               address space. Returns the entry point (initial PC)
  *               in the space pointed to by ENTRYPOINT.
+ *
+ *   load_segment - carica una porzione di segmento di grandezza memsize leggendo dal file elf partire dall'offset specificato
+ *                  filesize bytes.
  */
 
 int load_elf(struct vnode *v, vaddr_t *entrypoint);
 
 #if OPT_PAGING
 
-/*
- * Functions in addrspace.c:
- *
- *    load_page - 
- *                
- *                
- *                
- *
- *    load_segment - 
- *                
- *                
- *                
- *
- *
- */
+int load_page(struct addrspace *as, vaddr_t vaddr);
 
-int
-load_page(struct addrspace *as, vaddr_t vaddr);
-
-int
-load_segment(struct addrspace *as, struct vnode *v,
+int load_segment(struct addrspace *as, struct vnode *v,
 	     off_t offset, vaddr_t vaddr,
 	     size_t memsize, size_t filesize,
 	     int is_executable);

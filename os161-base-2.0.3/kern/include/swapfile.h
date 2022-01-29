@@ -9,11 +9,12 @@
 #define SWAP_MAX 9 * 1024 * 1024 / PAGE_SIZE
 
 typedef struct {
-    struct vnode *file;
-    uint8_t refs[SWAP_MAX];
+    struct vnode* file;     /* Rappresenta il file utilizzato per effettuare lo swap-in o lo swap-out delle pagine*/
+    uint8_t refs[SWAP_MAX]; /* Arrai il cui indici rappresentano una porzione del file che può contenere una pagina e i cui elementi rappresentano il contatore di riferimenti a tale pagina. Se 0 la porzione è libera.  */
 } swap_file;
 
-struct lock* swap_lock;
+struct lock* swap_lock; /* Utilizzato per sincronizzare gli accessi alla struttura dati*/
+
 /**
  *
  * Functions:

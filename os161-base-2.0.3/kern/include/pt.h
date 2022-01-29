@@ -12,20 +12,18 @@
 
 #define PAGE_NOT_FOUND 1
 
-
-typedef struct
+typedef struct /* secondo livello */
 {
-    unsigned int frame_no : 20;
-    bool valid : 1;
-    bool swp : 1; //è in swap
-    bool swapping : 1; //è stato scelto come vittima
+    unsigned int frame_no : 20; /* indica di quale numero di frame si tratta oppure se swp = 1 indica l’indice (offset nel file swap / 4096) nel quale il frame si trovi all’interno dello swap*/
+    unsigned int valid : 1;     /* indica se questa entry è valida (il frame corrispondente è utilizzabile) */
+    unsigned int swp : 1;       /* indica se la pagina si trovi nello swap file */
+    bool swapping : 1;          /* indica se la pagina sia stata scelta come vittima per lo swap-out */
 } pt_entry;
 
-typedef struct
+typedef struct /* primo livello */
 {
-    pt_entry **table; 
-    struct lock* pt_lock; //per garantire accesso concorrente alla struttura dati da parte dei thread del processo
-
+    pt_entry** table;     /* vettore di puntatori a Page Table di secondo livello */
+    struct lock* pt_lock; /* permette ad un thread del processo di avere un accesso esclusivo alla Page Table */
 } pt;
 
 /**

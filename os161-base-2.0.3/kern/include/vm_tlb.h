@@ -8,9 +8,9 @@
  *
  * Funzioni:
  *
- *     tlb_get_rr_victim - Sceglie una entry della tlb da sostituire mediante una politica Round-Robin e ne restituisce l'indice.
+ *     tlb_get_rr_victim - Sceglie una entry della TLB da sostituire mediante una politica Round-Robin e ne restituisce l'indice.
  *
- *     invalidate_entry_by_paddr - Segna come invalida, se esiste, la entry della tlb riferita al frame che contiene l'indirizzo paddr.
+ *     invalidate_entry_by_paddr - Segna come invalida, se esiste, la entry della TLB riferita al frame che contiene l'indirizzo paddr.
  *
  */
 

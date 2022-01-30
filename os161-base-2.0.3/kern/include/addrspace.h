@@ -40,12 +40,12 @@
 #include "opt-dumbvm.h"
 #include "opt-paging.h"
 #if OPT_PAGING
-#include <pt.h>
+struct pt;
+struct vnode;
 #define N_SEGMENTS 2
 #define PROJECT_STACK_MIN_ADDRESS USERSTACK-(18 * PAGE_SIZE)
 #endif
 
-struct vnode;
 
 
 /*
@@ -80,14 +80,14 @@ struct addrspace {
     struct segment segments[N_SEGMENTS]; /* tabella dei segmenti */
     union {
         int index; /* indice utilizzato durante il caricamento dei segmenti */
-        int ignore_permissions;
+        int ignore_permissions; /* indica se ignorare i permessi*/
     };
 
-    struct vnode *file;
+    struct vnode *file; /* file ELF nel quale sono presenti i segmenti */
 
-    bool active;
+    bool active; /* indica se lo spazio d’indirizzamento sia attivo */
 
-    pt *page_table; /* tabella delle pagine */
+    struct pt *page_table; /* tabella delle pagine */
 
 #endif
 

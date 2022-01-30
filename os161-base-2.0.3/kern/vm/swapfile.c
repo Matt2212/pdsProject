@@ -10,16 +10,16 @@
 #include <synch.h>
 #include <kern/errno.h>
 #include <coremap.h>
-
+#include <pt.h>
 #include <vm_stats.h>
 
-static swap_file* swap;
+static struct swap_file* swap;
 static bool init = false;
 
 //ritorna 0 se non ci sono stati errori
 int swap_init() {
     char name[] = "emu0:/SWAPFILE";
-    swap = kmalloc(sizeof(swap_file));
+    swap = kmalloc(sizeof(struct swap_file));
     if (swap == NULL) {
         panic("swap_init: OUT OF MEMORY");
         return ENOMEM;
@@ -111,7 +111,7 @@ void swap_close() {
     lock_release(swap_lock);
 }
 
-int load_from_swap(pt_entry* entry){
+int load_from_swap(struct pt_entry* entry){
 
     int err;
     paddr_t frame;    
@@ -136,7 +136,7 @@ int load_from_swap(pt_entry* entry){
 
 void swap_inc_ref(unsigned int index) {
     KASSERT(index < SWAP_MAX);
-    if (!lock_do_i_hold(swap_lock)) { //mwttila in una kassert
+    if (!lock_do_i_hold(swap_lock)) {
         lock_acquire(swap_lock);
         swap->refs[index]++;
         lock_release(swap_lock);

@@ -8,7 +8,7 @@
 #include <kern/errno.h>
 #include <thread.h>
 #include <vm_tlb.h>
-
+#include <pt.h>
 #include <current.h>
 
 #define MAX_ATTEMPTS 5
@@ -66,7 +66,7 @@ bool coremap_bootstrap(paddr_t firstpaddr) {
     return true;
 }
 
-static paddr_t get_n_frames(unsigned int num, pt_entry* entry) {
+static paddr_t get_n_frames(unsigned int num, struct pt_entry* entry) {
     
     paddr_t addr = 0;
     uint32_t i = first_page, residual, page;
@@ -138,7 +138,7 @@ static paddr_t get_n_frames(unsigned int num, pt_entry* entry) {
     return addr;    
 }
 
-paddr_t get_user_frame(pt_entry* entry) {
+paddr_t get_user_frame(struct pt_entry* entry) {
     paddr_t ret;
     for (int i = 0; i < MAX_ATTEMPTS; i++) {
         ret = get_n_frames(1, entry);

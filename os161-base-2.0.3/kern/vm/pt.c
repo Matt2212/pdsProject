@@ -14,13 +14,13 @@
 static struct spinlock spinlock_faults_from_disk = SPINLOCK_INITIALIZER;
 
 
-pt* pt_create(){
-    pt* ret;
+struct pt* pt_create(){
+    struct pt* ret;
     static int id = 0;
-    ret = kmalloc(sizeof(pt));
+    ret = kmalloc(sizeof(struct pt));
     if(ret == NULL)
         return NULL;
-    ret->table = kmalloc(sizeof(pt_entry*) * TABLE_SIZE);
+    ret->table = kmalloc(sizeof(struct pt_entry*) * TABLE_SIZE);
     if (ret->table == NULL){
         kfree(ret);
         return NULL;
@@ -36,7 +36,7 @@ pt* pt_create(){
     return ret;
 }
 
-void pt_destroy(pt* table){ // puo' essere eseguita una sola volta, operazione atomica
+void pt_destroy(struct pt* table){ // puo' essere eseguita una sola volta, operazione atomica
     int i = 0;
     if (table == NULL) return;
 
@@ -59,9 +59,9 @@ void pt_destroy(pt* table){ // puo' essere eseguita una sola volta, operazione a
     lock_release(swap_lock);
 }
 
-static int init_rows(pt* table, unsigned int index) {
+static int init_rows(struct pt* table, unsigned int index) {
     index = GET_EXT_INDEX(index);
-    table->table[index] = kmalloc(sizeof(pt_entry)*TABLE_SIZE);
+    table->table[index] = kmalloc(sizeof(struct pt_entry)*TABLE_SIZE);
     if (table->table[index] == NULL) {
         kprintf("init_rows: No space left for pt entry creation \n");
         return ENOMEM;
@@ -69,7 +69,7 @@ static int init_rows(pt* table, unsigned int index) {
     return 0;
 }
 
-static int load_frame(pt* table, unsigned int exte, unsigned int inte, vaddr_t fault_addr) {
+static int load_frame(struct pt* table, unsigned int exte, unsigned int inte, vaddr_t fault_addr) {
     static struct spinlock spinlock_zeroed_stats = SPINLOCK_INITIALIZER;
     int err = 0;
     table->table[exte][inte].frame_no = get_user_frame(&table->table[exte][inte]) >> 12;
@@ -94,7 +94,7 @@ static int load_frame(pt* table, unsigned int exte, unsigned int inte, vaddr_t f
     return err;
 }
 
-int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
+int pt_get_frame_from_page(struct pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
     unsigned int exte, inte;
     int err = 0;
     exte = GET_EXT_INDEX(fault_addr);
@@ -161,7 +161,7 @@ int pt_get_frame_from_page(pt* table, vaddr_t fault_addr, paddr_t* frame_addr) {
     return 0;
 }
 
-int pt_copy(pt* old, pt* new) {
+int pt_copy(struct pt* old, struct pt* new) {
     int i = 0;
     lock_acquire(old->pt_lock);
     lock_acquire(swap_lock);  

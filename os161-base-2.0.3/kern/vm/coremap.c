@@ -89,6 +89,7 @@ static paddr_t get_n_frames(unsigned int num, struct pt_entry* entry) {
         return 0;
     } else if (!found) {
         int err = 0;
+        bool victim_free = false;
         unsigned int swap_index;
         i = get_victim();
         splx(spl);
@@ -106,15 +107,18 @@ static paddr_t get_n_frames(unsigned int num, struct pt_entry* entry) {
             return 0;
         }
         spl = splhigh();
-        //mentre effettuo la swap un processo in fase di disrtuzione potrebbe aver liberato il frame vittima
+        //mentre effettuo la swap un processo in fase di disrtuzione potrebbe aver eseguito una free sul frame vittima
         if (coremap[i].pt_entry != NULL) {
             invalidate_entry_by_paddr(coremap[i].pt_entry->frame_no << 12);
             coremap[i].pt_entry->frame_no = swap_index;
             coremap[i].pt_entry->swp = true;
             coremap[i].pt_entry->swapping = false;
-        }
+        } else
+            victim_free = true;
         coremap[i].pt_entry = entry;
         splx(spl);
+        if (victim_free)
+            swap_get((vaddr_t) NULL, swap_index);
         addr = (paddr_t)(i * PAGE_SIZE);
         bzero((void*)PADDR_TO_KVADDR(addr), PAGE_SIZE);
         return addr;

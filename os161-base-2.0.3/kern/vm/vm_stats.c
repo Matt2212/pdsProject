@@ -43,7 +43,6 @@ void print_stats(void){
     kprintf("%s %lld\n", messages[swap_file_writes],         counters[swap_file_writes]);
 
 
-    // forse differeza se crash o no
     if(counters[tlb_faults] != counters[tlb_faults_with_free] + counters[tlb_faults_with_replace]){
         kprintf("Warning the property 'tlb_faults = tlb_faults_with_free + tlb_faults_with_replace' does not hold\n");
     }

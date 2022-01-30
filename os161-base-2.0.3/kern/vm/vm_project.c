@@ -96,7 +96,7 @@ static paddr_t
 getppages(unsigned long npages) {
     paddr_t addr;
     spinlock_acquire(&vm_lock);
-    if (!init) { // dovremmo essere al bootstrap quindi possiamo allocare in maniera contigua
+    if (!init) { // la funzione è stata chiamata durante il bootstrap quindi possiamo allocare in maniera contigua
         addr = ram_stealmem(npages);
         spinlock_release(&vm_lock);
     }
@@ -257,7 +257,7 @@ void vm_shutdown(void){
         coremap_shutdown();
         init = false;
 
-        print_stats();                  // print statistics
+        print_stats(); // print statistics
     }
 
     spinlock_release(&vm_lock);

@@ -96,7 +96,7 @@ int swap_set(vaddr_t address, unsigned int* ret_index) {
     *ret_index = index;
     if (!err) inc_counter(swap_file_writes);
     if(!lock_hold)
-        lock_release(swap_lock); //magari rilascialo prima della scrittura
+        lock_release(swap_lock);
     return err;
 }
 
@@ -118,7 +118,6 @@ int load_from_swap(struct pt_entry* entry){
     
 
     KASSERT(entry->swp);
-    //crea la get_swappable_fixed_frame
     frame = get_user_frame(entry);
     if(frame == 0){
         return ENOMEM;

@@ -62,9 +62,11 @@ runprogram(char *progname)
 	/* Open the file. */
 	result = vfs_open(progname, O_RDONLY, 0, &v);
 	if (result) {
+#if OPT_PAGING
             struct proc* p = curthread->t_proc;
             proc_remthread(curthread);
             proc_signal_end(p);
+#endif
             return result;
 	}
 

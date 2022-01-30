@@ -106,10 +106,13 @@ static paddr_t get_n_frames(unsigned int num, struct pt_entry* entry) {
             return 0;
         }
         spl = splhigh();
-        invalidate_entry_by_paddr(coremap[i].pt_entry->frame_no << 12);
-        coremap[i].pt_entry->frame_no = swap_index;
-        coremap[i].pt_entry->swp = true;
-        coremap[i].pt_entry->swapping = false;
+        //mentre effettuo la swap un processo in fase di disrtuzione potrebbe aver liberato il frame vittima
+        if (coremap[i].pt_entry != NULL) {
+            invalidate_entry_by_paddr(coremap[i].pt_entry->frame_no << 12);
+            coremap[i].pt_entry->frame_no = swap_index;
+            coremap[i].pt_entry->swp = true;
+            coremap[i].pt_entry->swapping = false;
+        }
         coremap[i].pt_entry = entry;
         splx(spl);
         addr = (paddr_t)(i * PAGE_SIZE);
@@ -173,6 +176,14 @@ void free_frame(paddr_t addr) {
     }
     mysize = coremap[page].nframes;
     KASSERT(mysize>0);
+    if (coremap[page].pt_entry != NULL && coremap[page].pt_entry->swapping) {  // se si sta effettuando lo swap-out della pagina contenuta nel frame questi campi devono rimanere invariati
+        KASSERT(coremap[page].nframes == 1);
+        coremap[page].fixed = true;
+        coremap[page].pt_entry = NULL;
+        splx(spl);
+        return;
+    }
+
     for (i = 0; i < mysize; i++) {
         coremap[page + i].occ = false;
         coremap[page + i].fixed = false;

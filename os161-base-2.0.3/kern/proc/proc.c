@@ -67,23 +67,20 @@ static struct _processTable {
  */
 struct proc *kproc;
 
+#if OPT_PAGING
 /*
  * G.Cabodi - 2019
  * Initialize support for pid/waitpid.
  */
 struct proc *
 proc_search_pid(pid_t pid) {
-#if OPT_PAGING
     struct proc *p;
     KASSERT(pid >= 0 && pid < MAX_PROC);
     p = processTable.proc[pid];
     KASSERT(p->p_pid == pid);
     return p;
-#else
-    (void)pid;
-    return NULL;
-#endif
 }
+
 
 /*
  * G.Cabodi - 2019
@@ -91,7 +88,6 @@ proc_search_pid(pid_t pid) {
  */
 static void
 proc_init_waitpid(struct proc *proc, const char *name) {
-#if OPT_PAGING
     /* search a free index in table using a circular strategy */
     int i;
     spinlock_acquire(&processTable.lk);
@@ -119,10 +115,6 @@ proc_init_waitpid(struct proc *proc, const char *name) {
     proc->p_cv = cv_create(name);
     proc->p_lock = lock_create(name);
 #endif
-#else
-    (void)proc;
-    (void)name;
-#endif
 }
 
 /*
@@ -131,7 +123,6 @@ proc_init_waitpid(struct proc *proc, const char *name) {
  */
 static void
 proc_end_waitpid(struct proc *proc) {
-#if OPT_PAGING
     /* remove the process from the table */
     int i;
     spinlock_acquire(&processTable.lk);
@@ -146,11 +137,9 @@ proc_end_waitpid(struct proc *proc) {
     cv_destroy(proc->p_cv);
     lock_destroy(proc->p_lock);
 #endif
-#else
-    (void)proc;
-#endif
 }
 
+#endif
 /*
  * Create a proc structure.
  */
@@ -176,9 +165,9 @@ proc_create(const char *name) {
 
     /* VFS fields */
     proc->p_cwd = NULL;
-
+#if OPT_PAGING
     proc_init_waitpid(proc, name);
-
+#endif
     return proc;
 }
 
@@ -261,7 +250,9 @@ void proc_destroy(struct proc *proc) {
 
     KASSERT(proc->p_numthreads == 0);
     spinlock_cleanup(&proc->p_lock);
+#if OPT_PAGING
     proc_end_waitpid(proc);
+#endif
     kfree(proc->p_name);
     kfree(proc);
 }
@@ -408,10 +399,9 @@ proc_setas(struct addrspace *newas) {
     spinlock_release(&proc->p_lock);
     return oldas;
 }
-
+#if OPT_PAGING
 /* G.Cabodi - 2019 - support for waitpid */
 int proc_wait(struct proc *proc) {
-#if OPT_PAGING
     int return_status;
     /* NULL and kernel proc forbidden */
     KASSERT(proc != NULL);
@@ -428,11 +418,6 @@ int proc_wait(struct proc *proc) {
     return_status = proc->p_status;
     proc_destroy(proc);
     return return_status;
-#else
-    /* this doesn't synchronize */
-    (void)proc;
-    return 0;
-#endif
 }
 
 /* G.Cabodi - 2019 - support for waitpid */
@@ -445,3 +430,4 @@ void proc_signal_end(struct proc *proc) {
     lock_release(proc->p_lock);
 #endif
 }
+#endif
